@@ -7,13 +7,12 @@
 
 
 #include <nil/fwd.hpp>
-#include <nil/node.hpp>
 #include <nil/aspect.hpp>
 #include <stddef.h>
+#include <GL/gl3w.h>
 #include <SDL2/SDL.h>
 #include <utilities/utilities.hpp>
 #include <math/math.hpp>
-#include <GL/gl3w.h>
 
 
 // ---------------------------------------------------- [ SDL Aspect Config ] --
@@ -53,6 +52,7 @@ struct SDL_Aspect : public Nil::Aspect
   SDL_Window *m_sdl_window;
   SDL_GLContext m_sdl_gl_context;
   
+  bool m_update;
   Nil::Node m_window_node;
 };
 
@@ -71,6 +71,7 @@ struct SDL_Aspect : public Nil::Aspect
 #define SDL_ASPECT_IMPL_5D76166D_3BF0_4692_B623_E8DFA5EB8599
 
 
+#include <nil/node.hpp>
 #include <nil/node_event.hpp>
 #include <nil/data/window.hpp>
 
@@ -103,9 +104,10 @@ SDL_Aspect::SDL_Aspect()
 : Nil::Aspect()
 , m_sdl_window(nullptr)
 , m_sdl_gl_context(nullptr)
+, m_update(false)
 , m_window_node(nullptr)
 {
-  register_data_type(Nil::Data::get_type_id_window());
+  register_data_type(Nil::Data::get_type_id(Nil::Data::Window{}));
 }
 
 
@@ -125,7 +127,18 @@ SDL_Aspect::node_events(
   
     if(Nil::Data::has_window(node_events[i].node))
     {
-      m_window_node = node;
+      const bool valid_window_node = m_window_node;
+      const bool updating_current = m_window_node == node;
+      
+      if(!valid_window_node || updating_current)
+      {
+        m_window_node = node;
+        m_update = true;
+      }
+      else
+      {
+        LOG_ERROR("SDL Aspect only supports one node with a window.")
+      }
     }
   }
 }
@@ -253,6 +266,14 @@ SDL_Aspect::early_think(const float dt)
       
       gl3wInit();
       
+      Nil::Data::Graphics gfx;
+      gfx.type = Nil::Data::Graphics::OGL;
+      
+      glGetIntegerv(GL_MAJOR_VERSION, (GLint*)&gfx.major);
+      glGetIntegerv(GL_MINOR_VERSION, (GLint*)&gfx.minor);
+      
+      Nil::Data::set(m_window_node, gfx);
+      
       #ifdef SDL_ASPECT_IMGUI_SUPPORT
       ImGui_ImplSdlGL3_Init(window);
       ImGui_ImplSdlGL3_NewFrame(window);
@@ -271,8 +292,6 @@ SDL_Aspect::early_think(const float dt)
       SDL_SetWindowFullscreen(m_sdl_window, window_data.fullscreen ? fullscreen_mode : 0);
     }
   }
-  
-  m_window_node = Nil::Node(nullptr); // Clear the node.
 }
 
 
@@ -287,8 +306,8 @@ SDL_Aspect::late_think(const float dt)
     #endif
     SDL_GL_SwapWindow(m_sdl_window);
     
-    glClearColor(0.1f, 0.1f, 0.15f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glClearColor(0.1f, 0.1f, 0.15f, 1.f);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     // -- Reset ImGui -- //
     #ifdef SDL_ASPECT_IMGUI_SUPPORT

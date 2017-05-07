@@ -97,6 +97,7 @@ render_node(const Nil::Node &node, Nil::Node &inspect)
     memset(name, 0, sizeof(name));
     sprintf(name, "%s##%d", node.get_name(), node.get_id());
     
+    
     const bool show_tree = ImGui::TreeNode(name);
     
     ImGui::SameLine(0.f);
@@ -147,18 +148,30 @@ ImGUI_Aspect::think(const float dt)
       render_node(root.get_child(i), m_inspector_node);
     }
     
+    static std::vector<Nil::Node> add_nodes;
+    
+    ImGui::Spacing();
+    ImGui::Spacing();
+    if(ImGui::SmallButton("+"))
+    {
+      add_nodes.emplace_back(Nil::Node());
+    }
+    
     ImGui::End();
   }
   
   Nil::Node next_inspector_node = m_inspector_node;
   
-  /*
-    Node Inspector
-  */
+  
+  // ---------------------------------------------------------- [ Inspector ] --
+  
+  
   if(m_inspector_node.is_valid())
   {
     bool inspector_open = true;
     ImGui::Begin("Inspector", &inspector_open);
+    
+    ImGui::Text("Node Information");
     
     char name_buf[16]{0};
     strcat(name_buf, m_inspector_node.get_name());
@@ -167,6 +180,9 @@ ImGUI_Aspect::think(const float dt)
     {
       m_inspector_node.set_name(name_buf);
     }
+    
+    uint32_t node_id = m_inspector_node.get_id();
+    ImGui::InputInt("ID", (int*)&node_id, 0, 0, ImGuiInputTextFlags_ReadOnly);
     
     /*
       Relationships
@@ -191,25 +207,34 @@ ImGUI_Aspect::think(const float dt)
       
       const size_t child_count = m_inspector_node.get_child_count();
       
-      ImGui::Text("Children:");
-      
-      for(size_t i = 0; i < child_count; ++i)
+      if(child_count)
       {
-        Nil::Node child_node = m_inspector_node.get_child(i);
-      
-        ImGui::SameLine();
+        ImGui::Text("Children:");
         
-        char child_name[32]{0};
-        strcat(child_name, child_node.get_name());
-        strcat(child_name, "##Node");
-        
-        if(ImGui::SmallButton(child_name))
+        for(size_t i = 0; i < child_count; ++i)
         {
-          next_inspector_node = child_node;
+          Nil::Node child_node = m_inspector_node.get_child(i);
+        
+          ImGui::SameLine();
+          
+          char child_name[32]{0};
+          strcat(child_name, child_node.get_name());
+          strcat(child_name, "##Node");
+          
+          if(ImGui::SmallButton(child_name))
+          {
+            next_inspector_node = child_node;
+          }
         }
       }
     }
     
+    
+    // ------------------------------------------- [ Default Inspector Data ] --
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Text("Default Node Data");
     
     /*
       Transform Data
@@ -225,13 +250,14 @@ ImGUI_Aspect::think(const float dt)
         if(ImGui::DragFloat3("Position##Tra", trans.position)) { update_transform = true; }
         if(ImGui::DragFloat3("Scale##Tra",    trans.scale))    { update_transform = true; }
         if(ImGui::DragFloat4("Rotation##Tra", trans.rotation)) { update_transform = true; }
-        
+
         if(update_transform)
         {
           Nil::Data::set(m_inspector_node, trans);
         }
       }
     }
+    
     
     /*
       Bounding Box
@@ -253,6 +279,14 @@ ImGUI_Aspect::think(const float dt)
         }
       }
     }
+    
+    
+    // --------------------------------------------- [ Other Inspector Data ] --
+    
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Text("Other Node Data");
     
     /*
       Camera
@@ -288,15 +322,15 @@ ImGUI_Aspect::think(const float dt)
       }
     }
     
+    
     /*
-      Mesh
+      Collider
     */
-    if(Nil::Data::has_mesh(m_inspector_node))
+    if(Nil::Data::has_collider(m_inspector_node))
     {
-      if(ImGui::CollapsingHeader("Mesh"))
+      if(ImGui::CollapsingHeader("Collider"))
       {
-        Nil::Data::Mesh mesh{};
-        Nil::Data::get(m_inspector_node, mesh);
+        ImGui::Text("No UI Impl");
       }
     }
     
@@ -323,6 +357,170 @@ ImGUI_Aspect::think(const float dt)
       }
     }
     
+    
+    /*
+      Gamepad
+    */
+    if(Nil::Data::has_gamepad(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Gamepad"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+    
+    
+    /*
+      Graphics
+    */
+    if(Nil::Data::has_graphics(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Graphics"))
+      {
+        Nil::Data::Graphics gfx{};
+        Nil::Data::get(m_inspector_node, gfx);
+      
+        bool update_gfx = false;
+        
+        const char *types []
+        {
+          "OpenGL",
+          "DirectX",
+        };
+        
+        if(ImGui::Combo("API", (int*)&gfx.type, types, 2))  { update_gfx = true; }
+        if(ImGui::InputInt("Major", (int*)&gfx.major))      { update_gfx = true; }
+        if(ImGui::InputInt("Minor", (int*)&gfx.minor))      { update_gfx = true; }
+        
+        if(update_gfx)
+        {
+          Nil::Data::set(m_inspector_node, gfx);
+        }
+      }
+    }
+    
+    
+    /*
+      Keyboard
+    */
+    if(Nil::Data::has_keyboard(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Keyboard"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+    
+    
+    /*
+      Light
+    */
+    if(Nil::Data::has_light(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Light"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+
+
+    /*
+      Logic
+    */
+    if(Nil::Data::has_logic(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Logic"))
+      {
+        Nil::Data::Logic logic{};
+        Nil::Data::get(m_inspector_node, logic);
+      
+        bool update_logic = false;
+        
+        if(ImGui::InputInt("Type",  (int*)&logic.type))       { update_logic = true; }
+        if(ImGui::InputInt("ID",    (int*)&logic.logic_id))   { update_logic = true; }
+        if(ImGui::InputInt("Major", (int*)&logic.aux_01))     { update_logic = true; }
+        if(ImGui::InputInt("Minor", (int*)&logic.aux_02))     { update_logic = true; }
+
+        if(update_logic)
+        {
+          Nil::Data::set(m_inspector_node, logic);
+        }
+      }
+    }
+    
+    
+    /*
+      Material
+    */
+    if(Nil::Data::has_material(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Material"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+    
+    
+    /*
+      Mesh
+    */
+    if(Nil::Data::has_mesh(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Mesh"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+    
+    
+    /*
+      Mouse
+    */
+    if(Nil::Data::has_mouse(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Mouse"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+    
+    
+    /*
+      Resource
+    */
+    if(Nil::Data::has_resource(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Resource"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+    
+    
+    /*
+      Rigidbody
+    */
+    if(Nil::Data::has_rigidbody(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Rigidbody"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+
+
+    /*
+      Texture
+    */
+    if(Nil::Data::has_texture(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Texture"))
+      {
+        ImGui::Text("No UI Impl");
+      }
+    }
+    
+  
     /*
       Window Data
     */
@@ -346,15 +544,14 @@ ImGUI_Aspect::think(const float dt)
       }
     }
     
-    /*
-      Add Data
-    */
+    // --------------------------------------------------------- [ Add Data ] --
+    
     ImGui::Spacing();
     ImGui::Separator();
     
     ImGui::Text("Add Other Data");
     
-    const size_t item_count = 12;
+    const size_t item_count = 16;
     
     const char *items[item_count] {
       "Select Data",
@@ -362,13 +559,17 @@ ImGUI_Aspect::think(const float dt)
       "Collider",   // 2
       "Developer",  // 3
       "Gamepad",    // 4
-      "Keyboard",   // 5
-      "Mesh",       // 6
-      "Mouse",      // 7
-      "Resource",   // 8
-      "Rigidbody",  // 9
-      "Texture",    // 10,
-      "Window",     // 11,
+      "Graphics",   // 5
+      "Keyboard",   // 6
+      "Light",      // 7
+      "Logic",      // 8
+      "Material",   // 9
+      "Mesh",       // 10
+      "Mouse",      // 11
+      "Resource",   // 12
+      "Rigidbody",  // 13
+      "Texture",    // 14
+      "Window",     // 15
     };
     
     int item = 0;
@@ -414,6 +615,15 @@ ImGUI_Aspect::think(const float dt)
         }
         case(5):
         {
+          if(!Nil::Data::has_graphics(m_inspector_node))
+          {
+            Nil::Data::Graphics data{};
+            Nil::Data::set(m_inspector_node, data);
+          }
+          break;
+        }
+        case(6):
+        {
           if(!Nil::Data::has_keyboard(m_inspector_node))
           {
             Nil::Data::Keyboard data{};
@@ -421,7 +631,34 @@ ImGUI_Aspect::think(const float dt)
           }
           break;
         }
-        case(6):
+        case(7):
+        {
+          if(!Nil::Data::has_light(m_inspector_node))
+          {
+            Nil::Data::Light data{};
+            Nil::Data::set(m_inspector_node, data);
+          }
+          break;
+        }
+        case(8):
+        {
+          if(!Nil::Data::has_logic(m_inspector_node))
+          {
+            Nil::Data::Logic data{};
+            Nil::Data::set(m_inspector_node, data);
+          }
+          break;
+        }
+        case(9):
+        {
+          if(!Nil::Data::has_material(m_inspector_node))
+          {
+            Nil::Data::Material data{};
+            Nil::Data::set(m_inspector_node, data);
+          }
+          break;
+        }
+        case(10):
         {
           if(!Nil::Data::has_mesh(m_inspector_node))
           {
@@ -430,7 +667,7 @@ ImGUI_Aspect::think(const float dt)
           }
           break;
         }
-        case(7):
+        case(11):
         {
           if(!Nil::Data::has_mouse(m_inspector_node))
           {
@@ -439,7 +676,7 @@ ImGUI_Aspect::think(const float dt)
           }
           break;
         }
-        case(8):
+        case(12):
         {
           if(!Nil::Data::has_resource(m_inspector_node))
           {
@@ -448,7 +685,7 @@ ImGUI_Aspect::think(const float dt)
           }
           break;
         }
-        case(9):
+        case(13):
         {
           if(!Nil::Data::has_rigidbody(m_inspector_node))
           {
@@ -457,15 +694,16 @@ ImGUI_Aspect::think(const float dt)
           }
           break;
         }
-        case(10):
+        case(14):
         {
           if(!Nil::Data::has_texture(m_inspector_node))
           {
-            Nil::Data::Rigidbody data{};
+            Nil::Data::Texture data{};
             Nil::Data::set(m_inspector_node, data);
           }
+          break;
         }
-        case(11):
+        case(15):
         {
           if(!Nil::Data::has_window(m_inspector_node))
           {
@@ -477,6 +715,40 @@ ImGUI_Aspect::think(const float dt)
       }
     }
     
+    // ------------------------------------------------------ [ Delete Node ] --
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    
+    // Delete the node?
+    if(ImGui::Button("Delete Node"))
+    {
+      ImGui::OpenPopup("Delete");
+    }
+
+    // Destroy Node Confirmation.
+    if (ImGui::BeginPopupModal("Delete", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+      ImGui::Text("Destroy Node?\n");
+      ImGui::Separator();
+    
+      if (ImGui::Button("OK", ImVec2(120,0)))
+      {
+        m_inspector_node.destroy();
+        ImGui::CloseCurrentPopup();
+      }
+      
+      ImGui::SameLine();
+      
+      if (ImGui::Button("Cancel", ImVec2(120,0)))
+      {
+        ImGui::CloseCurrentPopup();
+      }
+      
+      ImGui::EndPopup();
+    }
+
+    
     ImGui::End();
     
     m_inspector_node = next_inspector_node;
@@ -487,9 +759,10 @@ ImGUI_Aspect::think(const float dt)
     }
   }
   
-  /*
-    Menu Bar
-  */
+  
+  // ---------------------------------------------------------- [ Main Menu ] --
+  
+  
   if(m_show_menu)
   {
     ImGui::BeginMainMenuBar();
