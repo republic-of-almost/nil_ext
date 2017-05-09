@@ -9,12 +9,15 @@
 // -------------------------------------------------------- [ Types and ID's] --
 
 
-
-constexpr uint32_t rovPixel_RGB = 1;
-constexpr uint32_t rovPixel_RGBA = 2;
+constexpr uint32_t rovPixel_R8        = 1;
+constexpr uint32_t rovPixel_RG8       = 2;
+constexpr uint32_t rovPixel_RGB8      = 3;
+constexpr uint32_t rovPixel_RGBA8     = 4;
 
 constexpr uint32_t rovClearFlag_Color = 1;
 constexpr uint32_t rovClearFlag_Depth = 2;
+
+constexpr uint32_t rovInputFormat_PNT = 1;
 
 
 // ------------------------------------------------------------- [ Lifetime ] --
@@ -30,8 +33,6 @@ void        rov_execute();
 
 uint32_t    rov_createTexture(const uint8_t *data, size_t size, uint32_t format);
 uint32_t    rov_createMesh(const float *pos, const float *normals, const float *tex_coords, size_t count);
-
-void        rov_clearSurface(bool color, bool depth);
 
 
 // ----------------------------------------------------------- [ Renderpass ] --
@@ -289,24 +290,6 @@ rov_createMesh(const float *positions, const float *normals, const float *tex_co
   rov_meshes.emplace_back(rov_mesh);
   
   return (uint32_t)rov_meshes.size();
-}
-
-
-void
-rov_clearSurface(bool color, bool depth)
-{
-  glClearColor(
-    curr_rov_clear_color[0],
-    curr_rov_clear_color[1],
-    curr_rov_clear_color[2],
-    curr_rov_clear_color[3]
-  );
-
-  GLint flags = 0;
-  if(color) { flags |= GL_COLOR_BUFFER_BIT; }
-  if(depth) { flags |= GL_DEPTH_BUFFER_BIT; }
-  
-//  glClear(flags);
 }
 
 

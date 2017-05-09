@@ -36,9 +36,28 @@ struct GL_Aspect : public Nil::Aspect
   
   // -------------------------------------------------------- [ Member Vars ] --
   
-  std::vector<Nil::Node> camera_nodes;
+  struct ROV_Camera
+  {
+    math::mat4 view;
+    math::mat4 proj;
+    
+    uint32_t clear_flags;
+  };
   
-  std::vector<Nil::Node> renderable_nodes;
+  std::vector<Nil::Node> m_pending_mesh_load;
+  
+  std::vector<Nil::Node> m_camera_nodes;
+  std::vector<ROV_Camera> m_rov_camera;
+  
+  
+  struct ROV_Renderable
+  {
+    math::mat4 world;
+  };
+  
+  std::vector<Nil::Node>      m_renderable_nodes;
+  std::vector<ROV_Renderable> m_renderables;
+  
   
   bool is_init = false;
   
@@ -72,8 +91,7 @@ GL_Aspect::GL_Aspect()
   register_data_type(Nil::Data::get_type_id(Nil::Data::Texture{}));
   register_data_type(Nil::Data::get_type_id(Nil::Data::Resource{}));
   register_data_type(Nil::Data::get_type_id(Nil::Data::Graphics{}));
-  
-  camera_nodes.resize(1);
+  register_data_type(Nil::Data::get_type_id(Nil::Data::Mesh_resource{}));
 }
   
   
@@ -87,7 +105,301 @@ GL_Aspect::node_events(const Nil::Node_event node_events[], const size_t count)
 {
   for(uint32_t i = 0; i < count; ++i)
   {
-    auto &node = node_events[i].node;
+    const Nil::Node_event &evt = node_events[i];
+    const Nil::Node &node = node_events[i].node;
+    
+    /*
+      New Nodes
+      Added to the scene.
+    */
+    if(Nil::Event::node_added(evt))
+    {
+      if(Nil::Data::has_mesh_resource(node))
+      {
+        m_pending_mesh_load.push_back(node);
+      }
+    
+      Nil::Data::Transform trans;
+      Nil::Data::get(node, trans);
+    
+      if(Nil::Data::has_camera(node))
+      {
+        Nil::Data::Camera cam_data;
+        Nil::Data::get(node, cam_data);
+        
+        // CPU Task
+        {
+          math::mat4 proj;
+        
+          if(cam_data.type == Nil::Data::Camera::PERSPECTIVE)
+          {
+            proj = math::mat4_projection(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane  , cam_data.fov);
+          }
+          else
+          {
+            proj = math::mat4_orthographic(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane);
+          }
+          
+          
+          const math::vec3 cam_pos = math::vec3_init_with_array(trans.position);
+          const math::quat cam_rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
+          const math::vec3 cam_fwd = math::quat_rotate_point(cam_rot, math::vec3_init(0,0,1));
+          const math::vec3 lookat_pos = math::vec3_add(cam_pos, cam_fwd);
+
+          const math::mat4 view = math::mat4_lookat(cam_pos, lookat_pos, math::vec3_init(0,1,0));
+          
+          uint32_t clear_flags = 0;
+          if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
+          if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
+          
+          ROV_Camera rov_cam;
+          rov_cam.proj = proj;
+          rov_cam.view = view;
+          rov_cam.clear_flags = clear_flags;
+          
+          // Keep data.
+          m_camera_nodes.push_back(node);
+          m_rov_camera.push_back(rov_cam);
+        }
+      }
+      
+      if(Nil::Data::has_material(node))
+      {
+        const math::vec3 pos = math::vec3_init_with_array(trans.position);
+        const math::vec3 scale = math::vec3_init_with_array(trans.scale);
+        const math::quat rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
+
+        const math::mat4 pos_mat = math::mat4_translate(pos);
+        const math::mat4 scale_mat = math::mat4_scale(scale);
+        const math::mat4 rot_mat = math::mat4_id();
+        // ROTATION!!!
+        
+        const math::mat4 world = math::mat4_multiply(scale_mat, rot_mat, pos_mat);
+        
+        ROV_Renderable rov_render;
+        rov_render.world = world;
+        
+        m_renderable_nodes.push_back(node);
+        m_renderables.push_back(rov_render);
+      }
+    }
+    
+    /*
+      Moved Nodes
+      Added to the scene.
+    */
+    if(Nil::Event::node_moved(evt))
+    {
+      Nil::Data::Transform trans;
+      Nil::Data::get(node, trans);
+    
+      if(Nil::Data::has_camera(node))
+      {
+        Nil::Data::Camera cam_data;
+        Nil::Data::get(node, cam_data);
+        
+        // CPU Task
+        {
+          math::mat4 proj;
+        
+          if(cam_data.type == Nil::Data::Camera::PERSPECTIVE)
+          {
+            proj = math::mat4_projection(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane  , cam_data.fov);
+          }
+          else
+          {
+            proj = math::mat4_orthographic(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane);
+          }
+          
+          const math::vec3 cam_pos = math::vec3_init_with_array(trans.position);
+          const math::quat cam_rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
+          const math::vec3 cam_fwd = math::quat_rotate_point(cam_rot, math::vec3_init(0,0,1));
+          const math::vec3 lookat_pos = math::vec3_add(cam_pos, cam_fwd);
+
+          const math::mat4 view = math::mat4_lookat(cam_pos, lookat_pos, math::vec3_init(0,1,0));
+          
+          uint32_t clear_flags = 0;
+          if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
+          if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
+          
+          ROV_Camera rov_cam;
+          rov_cam.proj = proj;
+          rov_cam.view = view;
+          rov_cam.clear_flags = clear_flags;
+          
+          // Keep data.
+          for(uint32_t i = 0; i < m_camera_nodes.size(); ++i)
+          {
+            if(node == m_camera_nodes[i])
+            {
+              m_rov_camera[i] = rov_cam;
+              
+              break;
+            }
+          }
+        }
+      }
+      
+      if(Nil::Data::has_material(node))
+      {
+        const math::vec3 pos = math::vec3_init_with_array(trans.position);
+        const math::vec3 scale = math::vec3_init_with_array(trans.scale);
+        const math::quat rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
+
+        const math::mat4 pos_mat = math::mat4_translate(pos);
+        const math::mat4 scale_mat = math::mat4_scale(scale);
+        const math::mat4 rot_mat = math::mat4_id();
+        // ROTATION!!!
+        
+        const math::mat4 world = math::mat4_multiply(scale_mat, rot_mat, pos_mat);
+        
+        ROV_Renderable rov_render;
+        rov_render.world = world;
+        
+        // Keep data.
+        for(uint32_t i = 0; i < m_renderable_nodes.size(); ++i)
+        {
+          if(node == m_renderable_nodes[i])
+          {
+            m_renderables[i] = rov_render;
+            
+            break;
+          }
+        }
+      }
+    }
+    
+    if(Nil::Event::node_updated(evt))
+    {
+      Nil::Data::Transform trans;
+      Nil::Data::get(node, trans);
+    
+      if(Nil::Data::has_camera(node))
+      {
+        Nil::Data::Camera cam_data;
+        Nil::Data::get(node, cam_data);
+        
+        // CPU Task
+        {
+          math::mat4 proj;
+        
+          if(cam_data.type == Nil::Data::Camera::PERSPECTIVE)
+          {
+            proj = math::mat4_projection(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane  , cam_data.fov);
+          }
+          else
+          {
+            proj = math::mat4_orthographic(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane);
+          }
+          
+          const math::vec3 cam_pos = math::vec3_init_with_array(trans.position);
+          const math::quat cam_rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
+          const math::vec3 cam_fwd = math::quat_rotate_point(cam_rot, math::vec3_init(0,0,1));
+          const math::vec3 lookat_pos = math::vec3_add(cam_pos, cam_fwd);
+
+          const math::mat4 view = math::mat4_lookat(cam_pos, lookat_pos, math::vec3_init(0,1,0));
+          
+          uint32_t clear_flags = 0;
+          if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
+          if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
+          
+          ROV_Camera rov_cam;
+          rov_cam.proj = proj;
+          rov_cam.view = view;
+          rov_cam.clear_flags = clear_flags;
+          
+          // Keep data.
+          bool add_to_data = true;
+          
+          for(uint32_t i = 0; i < m_camera_nodes.size(); ++i)
+          {
+            if(node == m_camera_nodes[i])
+            {
+              m_rov_camera[i] = rov_cam;
+              add_to_data = false;
+              break;
+            }
+          }
+          
+          if(add_to_data)
+          {
+            m_camera_nodes.push_back(node);
+            m_rov_camera.push_back(rov_cam);
+          }
+        }
+      }
+      
+      if(Nil::Data::has_material(node))
+      {
+        const math::vec3 pos = math::vec3_init_with_array(trans.position);
+        const math::vec3 scale = math::vec3_init_with_array(trans.scale);
+        const math::quat rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
+
+        const math::mat4 pos_mat = math::mat4_translate(pos);
+        const math::mat4 scale_mat = math::mat4_scale(scale);
+        const math::mat4 rot_mat = math::mat4_id();
+        // ROTATION!!!
+        
+        const math::mat4 world = math::mat4_multiply(scale_mat, rot_mat, pos_mat);
+        
+        ROV_Renderable rov_render;
+        rov_render.world = world;
+        
+        // Keep data.
+        bool add_to_data = true;
+        for(uint32_t i = 0; i < m_renderable_nodes.size(); ++i)
+        {
+          if(node == m_renderable_nodes[i])
+          {
+            m_renderables[i] = rov_render;
+            
+            add_to_data = false;
+            
+            break;
+          }
+        }
+        
+        if(add_to_data)
+        {
+          m_renderable_nodes.push_back(node);
+          m_renderables.push_back(rov_render);
+        }
+      }
+    }
+    
+    if(Nil::Event::node_removed(evt))
+    {
+      Nil::Data::Transform trans;
+      Nil::Data::get(node, trans);
+    
+      if(Nil::Data::has_camera(node))
+      {
+        for(uint32_t i = 0; i < m_camera_nodes.size(); ++i)
+        {
+          if(node == m_camera_nodes[i])
+          {
+            m_rov_camera.erase(std::begin(m_rov_camera) + i);
+            m_camera_nodes.erase(std::begin(m_camera_nodes) + i);
+            
+            break;
+          }
+        }
+      }
+      
+      if(Nil::Data::has_material(node))
+      {
+        for(uint32_t i = 0; i < m_renderable_nodes.size(); ++i)
+        {
+          if(node == m_renderable_nodes[i])
+          {
+            m_renderables.erase(std::begin(m_renderables) + i);
+            m_renderable_nodes.erase(std::begin(m_renderable_nodes) + i);
+            
+            break;
+          }
+        }
+      }
+    }
   
     if(Nil::Data::has_graphics(node_events[i].node))
     {
@@ -98,150 +410,130 @@ GL_Aspect::node_events(const Nil::Node_event node_events[], const size_t count)
         init = 1;
         rov_initialize();
         
-        const float positions[]
-      {
-      -0.5f, -0.5f,  0.5f,
-      0.5f, -0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f,  0.5f,
-      -0.5f, -0.5f,  0.5f,
-      -0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f, -0.5f,
-      -0.5f, -0.5f, -0.5f,
-      -0.5f, -0.5f, -0.5f,
-      -0.5f, -0.5f,  0.5f,
-      -0.5f,  0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      0.5f,  0.5f, -0.5f,
-      0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      -0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f,  0.5f,
-      0.5f, -0.5f,  0.5f,
-      -0.5f, -0.5f,  0.5f,
-      -0.5f, -0.5f, -0.5f,
-      -0.5f,  0.5f, -0.5f,
-      0.5f,  0.5f, -0.5f,
-      0.5f,  0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f, -0.5f,
-      };
+//        const float positions[]
+//      {
+//      -0.5f, -0.5f,  0.5f,
+//      0.5f, -0.5f,  0.5f,
+//      0.5f,  0.5f,  0.5f,
+//      0.5f,  0.5f,  0.5f,
+//      -0.5f,  0.5f,  0.5f,
+//      -0.5f, -0.5f,  0.5f,
+//      -0.5f,  0.5f,  0.5f,
+//      -0.5f,  0.5f, -0.5f,
+//      -0.5f, -0.5f, -0.5f,
+//      -0.5f, -0.5f, -0.5f,
+//      -0.5f, -0.5f,  0.5f,
+//      -0.5f,  0.5f,  0.5f,
+//      0.5f,  0.5f,  0.5f,
+//      0.5f,  0.5f, -0.5f,
+//      0.5f, -0.5f, -0.5f,
+//      0.5f, -0.5f, -0.5f,
+//      0.5f, -0.5f,  0.5f,
+//      0.5f,  0.5f,  0.5f,
+//      -0.5f, -0.5f, -0.5f,
+//      0.5f, -0.5f, -0.5f,
+//      0.5f, -0.5f,  0.5f,
+//      0.5f, -0.5f,  0.5f,
+//      -0.5f, -0.5f,  0.5f,
+//      -0.5f, -0.5f, -0.5f,
+//      -0.5f,  0.5f, -0.5f,
+//      0.5f,  0.5f, -0.5f,
+//      0.5f,  0.5f,  0.5f,
+//      0.5f,  0.5f,  0.5f,
+//      -0.5f,  0.5f,  0.5f,
+//      -0.5f,  0.5f, -0.5f,
+//      };
+//
+//      const float normals[] {
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//        1.0f, 1.0f, 1.0f,
+//      };
+//
+//
+//      const float texture_coords[] {
+//        0.0f, 0.0f,
+//        1.0f, 0.0f,
+//        1.0f, 1.0f,
+//        1.0f, 1.0f,
+//        0.0f, 1.0f,
+//        0.0f, 0.0f,
+//        0.0f, 0.0f,
+//        1.0f, 0.0f,
+//        1.0f, 1.0f,
+//        1.0f, 1.0f,
+//        0.0f, 1.0f,
+//        0.0f, 0.0f,
+//        1.0f, 0.0f,
+//        1.0f, 1.0f,
+//        0.0f, 1.0f,
+//        0.0f, 1.0f,
+//        0.0f, 0.0f,
+//        1.0f, 0.0f,
+//        1.0f, 0.0f,
+//        1.0f, 1.0f,
+//        0.0f, 1.0f,
+//        0.0f, 1.0f,
+//        0.0f, 0.0f,
+//        1.0f, 0.0f,
+//        0.0f, 1.0f,
+//        1.0f, 1.0f,
+//        1.0f, 0.0f,
+//        1.0f, 0.0f,
+//        0.0f, 0.0f,
+//        0.0f, 1.0f,
+//        0.0f, 1.0f,
+//        1.0f, 1.0f,
+//        1.0f, 0.0f,
+//        1.0f, 0.0f,
+//        0.0f, 0.0f,
+//        0.0f, 1.0f,
+//      };
 
-      const float normals[] {
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-      };
-
-
-      const float texture_coords[] {
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 0.0f,
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-      };
-
-      uint32_t mesh = rov_createMesh(positions, normals, texture_coords, 36);
+        if(!m_pending_mesh_load.empty())
+        {
+          Nil::Data::Mesh_resource mesh_resource{};
+          Nil::Data::get(m_pending_mesh_load[0], mesh_resource);
+        
+          uint32_t mesh = rov_createMesh(mesh_resource.position_vec3, mesh_resource.normal_vec3, mesh_resource.texture_coords_vec2, mesh_resource.count);
+        }
         
       }
       
       is_init = true;
-    }
-    
-    if(Nil::Data::has_camera(node))
-    {
-      Nil::Data::Camera cam;
-      Nil::Data::get(node, cam);
-      
-      camera_nodes[i] = node;
-    }
-    
-    if(Nil::Data::has_material(node))
-    {
-      bool already_exists = false;
-    
-      for(auto &n : renderable_nodes)
-      {
-        if (n == node)
-        {
-          already_exists = true;
-        }
-      }
-      
-      if(!already_exists)
-      {
-        renderable_nodes.push_back(node);
-      }
     }
   }
 }
@@ -251,10 +543,10 @@ void
 GL_Aspect::early_think(const float dt)
 {
   // Check cameras
-  for(auto it = std::begin(camera_nodes); it != std::end(camera_nodes); ++it)
-  {
+//  for(auto it = std::begin(camera_nodes); it != std::end(camera_nodes); ++it)
+//  {
    // it = camera_nodes.erase(it);
-  }
+//  }
 }
 
 
@@ -263,48 +555,14 @@ GL_Aspect::think(const float dt)
 {
   if(is_init)
   {
-    for(auto &cam : camera_nodes)
+    for(auto &cam : m_rov_camera)
     {
-      Nil::Data::Camera cam_data;
-      Nil::Data::get(cam, cam_data);
-      
-      Nil::Data::Transform cam_trans;
-      Nil::Data::get(cam, cam_trans);
-    
       rov_setColor(1, 0, 0, 1);
-      
-//      rov_clearSurface(true, false);
-  //    rov_setMesh(mesh);
     
+      rov_startRenderPass(math::mat4_get_data(cam.view), math::mat4_get_data(cam.proj), cam.clear_flags);
       
-      math::mat4 proj;
-      
-      if(cam_data.type == Nil::Data::Camera::PERSPECTIVE)
+      for(auto &render : m_renderable_nodes)
       {
-        proj = math::mat4_projection(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane  , cam_data.fov);
-      }
-      else
-      {
-        proj = math::mat4_orthographic(cam_data.width, cam_data.height, cam_data.near_plane, cam_data.far_plane);
-      }
-      
-      const math::vec3 cam_pos = math::vec3_init_with_array(cam_trans.position);
-      const math::quat cam_rot = math::quat_init(cam_trans.rotation[0], cam_trans.rotation[1], cam_trans.rotation[2], cam_trans.rotation[3]);
-      const math::vec3 cam_fwd = math::quat_rotate_point(cam_rot, math::vec3_init(0,0,1));
-      const math::vec3 lookat_pos = math::vec3_add(cam_pos, cam_fwd);
-      
-      const math::mat4 view = math::mat4_lookat(cam_pos, lookat_pos, math::vec3_init(0,1,0));
-    
-      uint32_t clear_flags = 0;
-      if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
-      if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
-    
-      rov_startRenderPass(math::mat4_get_data(view), math::mat4_get_data(proj), clear_flags);
-      
-      for(auto &render : renderable_nodes)
-      {
-        math::mat4 world = math::mat4_id();
-        
         Nil::Data::Transform trans{};
         Nil::Data::get(render, trans);
         

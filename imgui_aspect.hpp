@@ -247,9 +247,9 @@ ImGUI_Aspect::think(const float dt)
         Nil::Data::get(m_inspector_node, trans);
         
         bool update_transform = false;
-        if(ImGui::DragFloat3("Position##Tra", trans.position)) { update_transform = true; }
-        if(ImGui::DragFloat3("Scale##Tra",    trans.scale))    { update_transform = true; }
-        if(ImGui::DragFloat4("Rotation##Tra", trans.rotation)) { update_transform = true; }
+        if(ImGui::DragFloat3("Position##Tra", trans.position, 0.1f)) { update_transform = true; }
+        if(ImGui::DragFloat3("Scale##Tra",    trans.scale, 0.1f))    { update_transform = true; }
+        if(ImGui::DragFloat4("Rotation##Tra", trans.rotation, 0.1f)) { update_transform = true; }
 
         if(update_transform)
         {
@@ -270,8 +270,8 @@ ImGUI_Aspect::think(const float dt)
         Nil::Data::get(m_inspector_node, box);
         
         bool update_bounding_box = false;
-        if(ImGui::DragFloat3("Min##BB", box.min)) { update_bounding_box = true; }
-        if(ImGui::DragFloat3("Max##BB", box.max)) { update_bounding_box = true; }
+        if(ImGui::DragFloat3("Min##BB", box.min, 0.1f)) { update_bounding_box = true; }
+        if(ImGui::DragFloat3("Max##BB", box.max, 0.1f)) { update_bounding_box = true; }
         
         if(update_bounding_box)
         {
@@ -309,9 +309,9 @@ ImGUI_Aspect::think(const float dt)
         if(ImGui::DragInt("Priority##Cam",  (int*)&cam.priority))     { update_cam = true; }
         if(ImGui::DragInt("Width##Cam",  (int*)&cam.width))           { update_cam = true; }
         if(ImGui::DragInt("Height##Cam", (int*)&cam.height))          { update_cam = true; }
-        if(ImGui::DragFloat("FOV##Cam",  &cam.fov))                   { update_cam = true; }
-        if(ImGui::DragFloat("Near Plane##Cam",  &cam.near_plane))     { update_cam = true; }
-        if(ImGui::DragFloat("Far Plane##Cam",  &cam.far_plane))       { update_cam = true; }
+        if(ImGui::DragFloat("FOV##Cam",  &cam.fov, 0.01f))                   { update_cam = true; }
+        if(ImGui::DragFloat("Near Plane##Cam",  &cam.near_plane, 0.1f))     { update_cam = true; }
+        if(ImGui::DragFloat("Far Plane##Cam",  &cam.far_plane, 0.1f))       { update_cam = true; }
         if(ImGui::Checkbox("Clear Color Buffer##Cam", &cam.clear_color_buffer)) { update_cam = true; }
         if(ImGui::Checkbox("Clear Depth Buffer##Cam", &cam.clear_depth_buffer)) { update_cam = true; }
         
@@ -474,6 +474,110 @@ ImGUI_Aspect::think(const float dt)
     
     
     /*
+      Mesh Resource
+    */
+    if(Nil::Data::has_mesh_resource(m_inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Mesh_resource"))
+      {
+        Nil::Data::Mesh_resource mesh_resource{};
+        Nil::Data::get(m_inspector_node, mesh_resource);
+        
+        float columns = 3; // put position as default.
+        
+        if(mesh_resource.normal_vec3) { columns += 3.f; }
+        if(mesh_resource.texture_coords_vec2) { columns += 2.f; }
+        if(mesh_resource.color_vec4) { columns += 4.f; }
+        
+        
+        float col_ratio = (1.f / columns) * 0.9f;
+        
+        ImGui::Text("Vertex Count: %zu", mesh_resource.count);
+
+        // Positions
+        if(mesh_resource.position_vec3)
+        {
+          ImGui::BeginGroup();
+          ImGui::Text("Positions");
+          ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)0), ImVec2(ImGui::GetWindowWidth() * col_ratio * 3, 200.0f), true);
+          for (int line = 0; line < mesh_resource.count; line++)
+          {
+            int index = line * 3;
+            char pos[16];
+            memset(pos, 0, sizeof(pos));
+            sprintf(pos, "%.2f,%.2f,%.2f", mesh_resource.position_vec3[index + 0], mesh_resource.position_vec3[index + 1], mesh_resource.position_vec3[index + 2]);
+            ImGui::Text("%s", pos);
+          }
+          ImGui::EndChild();
+          ImGui::EndGroup();
+        }
+        
+        ImGui::SameLine();
+        
+        // Normals
+        if(mesh_resource.normal_vec3)
+        {
+          ImGui::BeginGroup();
+          ImGui::Text("Normals");
+          ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)1), ImVec2(ImGui::GetWindowWidth() * col_ratio * 3, 200.0f), true);
+          for (int line = 0; line < mesh_resource.count; line++)
+          {
+            int index = line * 3;
+            char pos[16];
+            memset(pos, 0, sizeof(pos));
+            sprintf(pos, "%.2f,%.2f,%.2f", mesh_resource.normal_vec3[index + 0], mesh_resource.normal_vec3[index + 1], mesh_resource.normal_vec3[index + 2]);
+            ImGui::Text("%s", pos);
+          }
+          ImGui::EndChild();
+          ImGui::EndGroup();
+        }
+
+        ImGui::SameLine();
+        
+        // UV
+        if(mesh_resource.texture_coords_vec2)
+        {
+          ImGui::BeginGroup();
+          ImGui::Text("UVs");
+          ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)2), ImVec2(ImGui::GetWindowWidth() * col_ratio * 2, 200.0f), true);
+          for (int line = 0; line < mesh_resource.count; line++)
+          {
+            int index = line * 2;
+            char pos[16];
+            memset(pos, 0, sizeof(pos));
+            sprintf(pos, "%.2f,%.2f", mesh_resource.texture_coords_vec2[index + 0], mesh_resource.texture_coords_vec2[index + 1]);
+            ImGui::Text("%s", pos);
+          }
+          ImGui::EndChild();
+          ImGui::EndGroup();
+        }
+        
+        ImGui::SameLine();
+        
+        // Colors
+        if(mesh_resource.color_vec4)
+        {
+          ImGui::BeginGroup();
+          ImGui::Text("Colors");
+          ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)3), ImVec2(ImGui::GetWindowWidth() * col_ratio * 4, 200.0f), true);
+          for (int line = 0; line < mesh_resource.count; line++)
+          {
+            int index = line * 4;
+            char pos[16];
+            memset(pos, 0, sizeof(pos));
+            sprintf(pos, "%.2f,%.2f,%.2f,%.2f", mesh_resource.color_vec4[index + 0], mesh_resource.color_vec4[index + 1], mesh_resource.color_vec4[index + 2], mesh_resource.color_vec4[index + 3]);
+            ImGui::Text("%s", pos);
+          }
+          ImGui::EndChild();
+          ImGui::EndGroup();
+          ImGui::EndChild();
+          ImGui::EndGroup();
+        }
+      }
+    }
+    
+    
+    /*
       Mouse
     */
     if(Nil::Data::has_mouse(m_inspector_node))
@@ -492,7 +596,14 @@ ImGUI_Aspect::think(const float dt)
     {
       if(ImGui::CollapsingHeader("Resource"))
       {
-        ImGui::Text("No UI Impl");
+        Nil::Data::Resource resource{};
+        Nil::Data::get(m_inspector_node, resource);
+      
+        ImGui::Text("Resources are readonly atm");
+        
+        ImGui::InputInt("Type", (int*)&resource.type, 0, 0, ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputText("Name", &resource.name[0], 64, ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputInt("Ptr", (int*)&resource.data, 0, 0, ImGuiInputTextFlags_ReadOnly);
       }
     }
     
