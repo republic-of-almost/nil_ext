@@ -34,6 +34,8 @@ struct ImGUI_Aspect : public Nil::Aspect
   
   Nil::Node m_inspector_node;
   bool m_show_graph;
+  bool m_show_data;
+  bool m_show_node_events;
   bool m_show_menu;
   
 };
@@ -74,6 +76,8 @@ ImGUI_Aspect::ImGUI_Aspect()
 : Nil::Aspect()
 , m_inspector_node(nullptr)
 , m_show_graph(true)
+, m_show_data(false)
+, m_show_node_events(false)
 , m_show_menu(true)
 {
 }
@@ -96,7 +100,6 @@ render_node(const Nil::Node &node, Nil::Node &inspect)
     char name[16];
     memset(name, 0, sizeof(name));
     sprintf(name, "%s##%d", node.get_name(), node.get_id());
-    
     
     const bool show_tree = ImGui::TreeNode(name);
     
@@ -135,6 +138,245 @@ void
 ImGUI_Aspect::think(const float dt)
 {
   Nil::Node &root = get_root_node();
+  
+  // ----------------------------------------------------------- [ Settings ] --
+  
+  /*
+    Render Settings
+  */
+  if(m_show_node_events)
+  {
+    ImGui::Begin("Node Events", &m_show_node_events);
+    
+    Nil::Engine_settings set;
+    get_engine()->get_settings(set);
+    
+    Nil::Engine_state stat;
+    get_engine()->get_state(stat);
+    
+    bool update_settings = false;
+    
+    if(ImGui::Checkbox("Pause Node Events", &set.pause_node_events)) { update_settings = true; }
+    
+    if(update_settings)
+    {
+      get_engine()->set_settings(set);
+    }
+    
+    ImGui::Spacing();
+    
+    ImGui::Text("Node Events");
+    ImGui::Columns(5, "pending_events"); // 4-ways, with border
+    ImGui::Separator();
+    ImGui::Text("Node ID");   ImGui::NextColumn();
+    ImGui::Text("Added");     ImGui::NextColumn();
+    ImGui::Text("Updated");   ImGui::NextColumn();
+    ImGui::Text("Moved");     ImGui::NextColumn();
+    ImGui::Text("Removed");   ImGui::NextColumn();
+    
+    ImGui::Separator();
+    
+    int selected = -1;
+    
+    for (int i = 0; i < stat.node_event_count; i++)
+    {
+      Nil::Node event_node = stat.node_events[i].node;
+    
+      char label[32];
+      sprintf(label, "%04d", event_node.get_id());
+      
+      if (ImGui::Selectable(label, selected == event_node.get_id(), ImGuiSelectableFlags_SpanAllColumns))
+          selected = i;
+      
+      ImGui::NextColumn();
+      
+      ImGui::Text(Nil::Event::node_added(stat.node_events[i]) ? "YES" : "NO");  ImGui::NextColumn();
+      ImGui::Text(Nil::Event::node_updated(stat.node_events[i]) ? "YES" : "NO");  ImGui::NextColumn();
+      ImGui::Text(Nil::Event::node_moved(stat.node_events[i]) ? "YES" : "NO"); ImGui::NextColumn();
+      ImGui::Text(Nil::Event::node_removed(stat.node_events[i]) ? "YES" : "NO"); ImGui::NextColumn();
+    }
+    ImGui::Columns(1);
+    
+    if(selected > -1)
+    {
+      m_inspector_node = stat.node_events[selected].node;
+    }
+    
+    ImGui::End();
+  }
+  
+  // --------------------------------------------------------------- [ Data ] --
+  
+  /*
+    Render Data store
+  */
+  if(m_show_data)
+  {
+    ImGui::Begin("Data", &m_show_data);
+    
+    ImGui::Text("Data stored in the graph");
+    
+    Nil::Engine_state stat;
+    get_engine()->get_state(stat);
+    
+    const float count = stat.node_count;
+    
+    char buf[16];
+    sprintf(buf, "%zu", stat.node_count);
+    
+    ImGui::ProgressBar(1.f, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Node");
+    
+    // --
+
+    sprintf(buf, "%zu", stat.bounding_box_count);
+    
+    ImGui::ProgressBar(stat.bounding_box_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Bounding_box");
+
+    // --
+
+    sprintf(buf, "%zu", stat.camera_count);
+    
+    ImGui::ProgressBar(stat.camera_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Camera");
+
+    // --
+
+    sprintf(buf, "%zu", stat.collider_count);
+    
+    ImGui::ProgressBar(stat.collider_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Collider");
+    
+    // --
+
+    sprintf(buf, "%zu", stat.developer_count);
+    
+    ImGui::ProgressBar(stat.developer_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Developer");
+    
+    // --
+
+    sprintf(buf, "%zu", stat.gamepad_count);
+    
+    ImGui::ProgressBar(stat.gamepad_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Gamepad");
+
+    // --
+
+    sprintf(buf, "%zu", stat.graphics_count);
+    
+    ImGui::ProgressBar(stat.graphics_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Graphics");
+
+    // --
+
+    sprintf(buf, "%zu", stat.keyboard_count);
+    
+    ImGui::ProgressBar(stat.keyboard_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Keyboards");
+
+    // --
+
+    sprintf(buf, "%zu", stat.light_count);
+    
+    ImGui::ProgressBar(stat.light_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Light");
+
+    // --
+
+    sprintf(buf, "%zu", stat.logic_count);
+    
+    ImGui::ProgressBar(stat.logic_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Logic");
+
+    // --
+
+    sprintf(buf, "%zu", stat.material_count);
+    
+    ImGui::ProgressBar(stat.material_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Material");
+
+    // --
+
+    sprintf(buf, "%zu", stat.mesh_count);
+    
+    ImGui::ProgressBar(stat.mesh_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Mesh");
+
+    // --
+
+    sprintf(buf, "%zu", stat.mesh_resource_count);
+    
+    ImGui::ProgressBar(stat.mesh_resource_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Mesh Resource");
+
+    // --
+
+    sprintf(buf, "%zu", stat.mouse_count);
+    
+    ImGui::ProgressBar(stat.mouse_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Mouse");
+    
+    // --
+
+    sprintf(buf, "%zu", stat.resouce_count);
+    
+    ImGui::ProgressBar(stat.resouce_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Resource");
+
+    // --
+
+    sprintf(buf, "%zu", stat.rigidbody_count);
+    
+    ImGui::ProgressBar(stat.rigidbody_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Rigidbody");
+    
+    // --
+
+    sprintf(buf, "%zu", stat.texture_count);
+    
+    ImGui::ProgressBar(stat.texture_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Texture");
+    
+    // --
+
+    sprintf(buf, "%zu", stat.transform_count);
+    
+    ImGui::ProgressBar(stat.transform_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Transform");
+    
+    // --
+
+    sprintf(buf, "%zu", stat.window_count);
+    
+    ImGui::ProgressBar(stat.window_count / count, ImVec2(0.0f,0.0f), buf);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::Text("Window");
+    
+
+    ImGui::End();
+  }
+  
+  // -------------------------------------------------------------- [ Graph ] --
   
   /*
     Render Graph
@@ -456,7 +698,30 @@ ImGUI_Aspect::think(const float dt)
     {
       if(ImGui::CollapsingHeader("Material"))
       {
-        ImGui::Text("No UI Impl");
+        Nil::Data::Material mat{};
+        Nil::Data::get(m_inspector_node, mat);
+        
+        bool update_mat = false;
+        
+        const char *shaders[] {
+          "FULLBRIGHT",
+          "LIT",
+          "DIR_LIGHT",
+        };
+        
+        if(ImGui::Combo("Shader", (int*)&mat.shader, shaders, sizeof(shaders) / sizeof (char*))) { update_mat = true; }
+        
+        if(ImGui::ColorEdit4("Color", mat.color))                { update_mat = true; }
+        if(ImGui::InputInt("Texture 01", (int*)&mat.texture_01)) { update_mat = true; }
+        if(ImGui::InputInt("Texture 02", (int*)&mat.texture_02)) { update_mat = true; }
+        if(ImGui::InputInt("Texture 03", (int*)&mat.texture_03)) { update_mat = true; }
+        if(ImGui::DragFloat2("UV Scale", mat.scale))             { update_mat = true; }
+        if(ImGui::DragFloat2("UV Offset", mat.offset))           { update_mat = true; }
+        
+        if(update_mat)
+        {
+          Nil::Data::set(m_inspector_node, mat);
+        }
       }
     }
     
@@ -881,6 +1146,8 @@ ImGUI_Aspect::think(const float dt)
     if(ImGui::BeginMenu("Nil"))
     {
       ImGui::MenuItem("Graph", nullptr, &m_show_graph);
+      ImGui::MenuItem("Data", nullptr, &m_show_data);
+      ImGui::MenuItem("Node Events", nullptr, &m_show_node_events);
       
       ImGui::Separator();
       
