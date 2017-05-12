@@ -117,7 +117,8 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   self->sdl_gl_context = nullptr;
   self->window_node = Nil::Node(nullptr);
   
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Window{}));
+  aspect.data_types = 0;
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Window{});
 }
 
 

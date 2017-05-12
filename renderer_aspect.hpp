@@ -97,14 +97,14 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
 
-
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Camera{}));
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Material{}));
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Mesh{}));
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Texture{}));
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Resource{}));
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Graphics{}));
-  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Mesh_resource{}));
+  aspect.data_types = 0;
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Camera{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Material{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Mesh{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Texture{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Resource{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Graphics{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Mesh_resource{});
 }
 
 
