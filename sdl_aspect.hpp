@@ -7,12 +7,8 @@
 
 
 #include <nil/fwd.hpp>
-#include <nil/aspect.hpp>
-#include <stddef.h>
-#include <GL/gl3w.h>
+#include <nil/node.hpp>
 #include <SDL2/SDL.h>
-#include <utilities/utilities.hpp>
-#include <math/math.hpp>
 
 
 // ---------------------------------------------------- [ SDL Aspect Config ] --
@@ -22,41 +18,45 @@
 #define SDL_ASPECT_IMGUIZMO_SUPPORT
 
 
-// ------------------------------------------------- [ SDL Aspect Interface ] --
+
 
 
 namespace Nil_ext {
+namespace SDL_Aspect {
 
 
-struct SDL_Aspect : public Nil::Aspect
+// ------------------------------------------------------ [ SDL Aspect Data ] --
+
+
+struct Data
 {
-  explicit
-  SDL_Aspect();
+  SDL_Window *sdl_window;
+  SDL_GLContext sdl_gl_context;
   
-  
-  ~SDL_Aspect();
-
-  
-  void
-  node_events(const Nil::Node_event node_events[], const size_t count) override;
-  
-  void
-  early_think(const float dt) override;
-  
-  void
-  late_think(const float dt) override;
-  
-  
-  // -------------------------------------------------------- [ Member Vars ] --
-  
-  SDL_Window *m_sdl_window;
-  SDL_GLContext m_sdl_gl_context;
-  
-  bool m_update;
-  Nil::Node m_window_node;
+  Nil::Node window_node;
 };
 
 
+// ------------------------------------------------- [ SDL Aspect Interface ] --
+
+
+void
+start_up(Nil::Engine &engine, Nil::Aspect &aspect);
+
+
+void
+events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list);
+
+
+void
+early_think(Nil::Engine &engine, Nil::Aspect &aspect);
+
+
+void
+late_think(Nil::Engine &engine, Nil::Aspect &aspect);
+
+
+} // ns
 } // ns
 
 
@@ -74,6 +74,9 @@ struct SDL_Aspect : public Nil::Aspect
 #include <nil/node.hpp>
 #include <nil/node_event.hpp>
 #include <nil/data/window.hpp>
+#include <nil/aspect.hpp>
+#include <utilities/utilities.hpp>
+#include <math/math.hpp>
 
 
 #ifdef SDL_ASPECT_IMGUI_SUPPORT
@@ -98,42 +101,47 @@ constexpr Uint32 fullscreen_mode  = SDL_WINDOW_FULLSCREEN;
 
 
 namespace Nil_ext {
+namespace SDL_Aspect {
 
 
-SDL_Aspect::SDL_Aspect()
-: Nil::Aspect()
-, m_sdl_window(nullptr)
-, m_sdl_gl_context(nullptr)
-, m_update(false)
-, m_window_node(nullptr)
+// ------------------------------------------------------ [ SDL Aspect Impl ] --
+
+
+void
+start_up(Nil::Engine &engine, Nil::Aspect &aspect)
 {
-  register_data_type(Nil::Data::get_type_id(Nil::Data::Window{}));
-}
-
-
-SDL_Aspect::~SDL_Aspect()
-{
+  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+  LIB_ASSERT(self);
+  
+  self->sdl_window = nullptr;
+  self->sdl_gl_context = nullptr;
+  self->window_node = Nil::Node(nullptr);
+  
+  aspect.data_types.emplace_back(Nil::Data::get_type_id(Nil::Data::Window{}));
 }
 
 
 void
-SDL_Aspect::node_events(
-  const Nil::Node_event *node_events,
-  const size_t count)
+events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
 {
-  for(size_t i = 0; i < count; ++i)
+  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+  LIB_ASSERT(self);
+
+  Nil::Event_data evt;
+
+  while(event_list.get(evt))
   {
-    const Nil::Node node = node_events[i].node;
+    const Nil::Node node = Nil::Event::node(evt);
   
-    if(Nil::Data::has_window(node_events[i].node))
+    if(Nil::Data::has_window(node))
     {
-      const bool valid_window_node = m_window_node;
-      const bool updating_current = m_window_node == node;
+      const bool valid_window_node = self->window_node;
+      const bool updating_current  = self->window_node == node;
       
       if(!valid_window_node || updating_current)
       {
-        m_window_node = node;
-        m_update = true;
+        self->window_node = node;
+//        self->update = true;
       }
       else
       {
@@ -145,15 +153,18 @@ SDL_Aspect::node_events(
 
 
 void
-SDL_Aspect::early_think(const float dt)
+early_think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
-  if(m_window_node.is_valid())
+  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+  LIB_ASSERT(self);
+
+  if(self->window_node.is_valid())
   {
     Nil::Data::Window window_data;
-    Nil::Data::get(m_window_node, window_data);
+    Nil::Data::get(self->window_node, window_data);
     
     // If we need to create the window.
-    if(m_sdl_window == nullptr)
+    if(self->sdl_window == nullptr)
     {
       const int32_t monitor_preference = 1;
       const char *title = strlen(window_data.title) ? window_data.title : "Nil";
@@ -257,10 +268,10 @@ SDL_Aspect::early_think(const float dt)
           SDL_GL_MakeCurrent(window, gl_context);
           SDL_GL_SetSwapInterval(v_sync ? 1 : 0); // Vsync
           
-          m_sdl_window = window;
-          m_sdl_gl_context = gl_context;
+          self->sdl_window = window;
+          self->sdl_gl_context = gl_context;
           
-          Nil::Data::set(m_window_node, window_data);
+          Nil::Data::set(self->window_node, window_data);
         }
       }
       
@@ -272,7 +283,7 @@ SDL_Aspect::early_think(const float dt)
       glGetIntegerv(GL_MAJOR_VERSION, (GLint*)&gfx.major);
       glGetIntegerv(GL_MINOR_VERSION, (GLint*)&gfx.minor);
       
-      Nil::Data::set(m_window_node, gfx);
+      Nil::Data::set(self->window_node, gfx);
       
       #ifdef SDL_ASPECT_IMGUI_SUPPORT
       ImGui_ImplSdlGL3_Init(window);
@@ -287,31 +298,31 @@ SDL_Aspect::early_think(const float dt)
     // Else resize
     else
     {
-      SDL_SetWindowTitle(m_sdl_window, window_data.title);
-      SDL_SetWindowSize(m_sdl_window, window_data.width, window_data.height);
-      SDL_SetWindowFullscreen(m_sdl_window, window_data.fullscreen ? fullscreen_mode : 0);
+      SDL_SetWindowTitle(self->sdl_window, window_data.title);
+      SDL_SetWindowSize(self->sdl_window, window_data.width, window_data.height);
+      SDL_SetWindowFullscreen(self->sdl_window, window_data.fullscreen ? fullscreen_mode : 0);
     }
   }
 }
 
 
 void
-SDL_Aspect::late_think(const float dt)
+late_think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
-  if(m_sdl_window)
+  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+  LIB_ASSERT(self);
+
+  if(self->sdl_window)
   {
     // Flip Buffers
     #ifdef SDL_ASPECT_IMGUI_SUPPORT
     ImGui::Render();
     #endif
-    SDL_GL_SwapWindow(m_sdl_window);
-    
-    //glClearColor(0.1f, 0.1f, 0.15f, 1.f);
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    SDL_GL_SwapWindow(self->sdl_window);
     
     // -- Reset ImGui -- //
     #ifdef SDL_ASPECT_IMGUI_SUPPORT
-    ImGui_ImplSdlGL3_NewFrame(m_sdl_window);
+    ImGui_ImplSdlGL3_NewFrame(self->sdl_window);
     #endif
     
     #ifdef SDL_ASPECT_IMGUIZMO_SUPPORT
@@ -319,7 +330,7 @@ SDL_Aspect::late_think(const float dt)
     #endif
 
     // Pump the messages
-    if(m_sdl_window)
+    if(self->sdl_window)
     {
       SDL_Event evt;
     
@@ -339,7 +350,7 @@ SDL_Aspect::late_think(const float dt)
             Time to quit
           */
           case(SDL_QUIT):
-            set_quit_signal();
+            aspect.want_to_quit = true;
             break;
 
           /*
@@ -486,11 +497,11 @@ SDL_Aspect::late_think(const float dt)
         }
       }
     }
-
   }
 }
 
 
+} // ns
 } // ns
 
 

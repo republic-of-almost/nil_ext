@@ -8,39 +8,37 @@
 
 #include <nil/fwd.hpp>
 #include <nil/node.hpp>
-#include <nil/aspect.hpp>
-#include <nil/data/data.hpp>
+
+
+namespace Nil_ext {
+namespace ImGui_Aspect {
+
+
+// ---------------------------------------------------- [ ImGUI Aspect Data ] --
+
+
+struct Data
+{
+  Nil::Node inspector_node;
+  bool show_graph;
+  bool show_data;
+  bool show_node_events;
+  bool show_menu;
+};
 
 
 // ----------------------------------------------- [ ImGUI Aspect Interface ] --
 
 
-namespace Nil_ext {
+void
+start_up(Nil::Engine &engine, Nil::Aspect &aspect);
 
 
-struct ImGUI_Aspect : public Nil::Aspect
-{
-  explicit
-  ImGUI_Aspect();
-  
-  
-  ~ImGUI_Aspect();
-  
-  void
-  think(const float dt) override;
-    
-  
-  // -------------------------------------------------------- [ Member Vars ] --
-  
-  Nil::Node m_inspector_node;
-  bool m_show_graph;
-  bool m_show_data;
-  bool m_show_node_events;
-  bool m_show_menu;
-  
-};
+void
+think(Nil::Engine &engine, Nil::Aspect &aspect);
 
 
+} // ns
 } // ns
 
 
@@ -55,6 +53,8 @@ struct ImGUI_Aspect : public Nil::Aspect
 #define IMGUI_ASPECT_IMPL_C344ADC3_7EB9_4B5E_9B3F_D1E3627E42A7
 
 
+#include <nil/aspect.hpp>
+#include <nil/data/data.hpp>
 #include <nil/node_event.hpp>
 #include <nil/data/window.hpp>
 #include <imgui/imgui.h>
@@ -62,30 +62,24 @@ struct ImGUI_Aspect : public Nil::Aspect
 #include <string.h>
 
 
-namespace {
-
-
-  
-} // anon ns
-
-
 namespace Nil_ext {
+namespace ImGui_Aspect {
 
 
-ImGUI_Aspect::ImGUI_Aspect()
-: Nil::Aspect()
-, m_inspector_node(nullptr)
-, m_show_graph(true)
-, m_show_data(false)
-, m_show_node_events(false)
-, m_show_menu(true)
+// ---------------------------------------------------- [ ImGUI Aspect Impl ] --
+
+
+void
+start_up(Nil::Engine &engine, Nil::Aspect &aspect)
 {
-}
-
-
-ImGUI_Aspect::~ImGUI_Aspect()
-{
+  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+  LIB_ASSERT(self);
   
+  self->inspector_node = Nil::Node(nullptr);
+  self->show_graph = true;
+  self->show_data = false;
+  self->show_node_events = false;
+  self->show_menu = true;
 }
 
 
@@ -131,28 +125,31 @@ render_node(const Nil::Node &node, Nil::Node &inspect)
 };
 
 
-}
+} // anon ns
 
 
 void
-ImGUI_Aspect::think(const float dt)
+think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
-  Nil::Node &root = get_root_node();
+  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+  LIB_ASSERT(self);
+
+  Nil::Node root = Nil::Node(0, false);
   
   // ----------------------------------------------------------- [ Settings ] --
   
   /*
     Render Settings
   */
-  if(m_show_node_events)
+  if(self->show_node_events)
   {
-    ImGui::Begin("Node Events", &m_show_node_events);
+    ImGui::Begin("Node Events", &self->show_node_events);
     
     Nil::Engine_settings set;
-    get_engine()->get_settings(set);
+    engine.get_settings(set);
     
     Nil::Engine_state stat;
-    get_engine()->get_state(stat);
+    engine.get_state(stat);
     
     bool update_settings = false;
     
@@ -160,7 +157,7 @@ ImGUI_Aspect::think(const float dt)
     
     if(update_settings)
     {
-      get_engine()->set_settings(set);
+      engine.set_settings(set);
     }
     
     ImGui::Spacing();
@@ -180,7 +177,7 @@ ImGUI_Aspect::think(const float dt)
     
     for (int i = 0; i < stat.node_event_count; i++)
     {
-      Nil::Node event_node = stat.node_events[i].node;
+      Nil::Node event_node = Nil::Node(stat.node_events[i].node_id, false);
     
       char label[32];
       sprintf(label, "%04d", event_node.get_id());
@@ -199,7 +196,7 @@ ImGUI_Aspect::think(const float dt)
     
     if(selected > -1)
     {
-      m_inspector_node = stat.node_events[selected].node;
+      self->inspector_node = Nil::Node(stat.node_events[selected].node_id);
     }
     
     ImGui::End();
@@ -210,14 +207,14 @@ ImGUI_Aspect::think(const float dt)
   /*
     Render Data store
   */
-  if(m_show_data)
+  if(self->show_data)
   {
-    ImGui::Begin("Data", &m_show_data);
+    ImGui::Begin("Data", &self->show_data);
     
     ImGui::Text("Data stored in the graph");
     
     Nil::Engine_state stat;
-    get_engine()->get_state(stat);
+    engine.get_state(stat);
     
     const float count = stat.node_count;
     
@@ -381,13 +378,13 @@ ImGUI_Aspect::think(const float dt)
   /*
     Render Graph
   */
-  if(m_show_graph)
+  if(self->show_graph)
   {
-    ImGui::Begin("Graph", &m_show_graph);
+    ImGui::Begin("Graph", &self->show_graph);
   
     for(size_t i = 0; i < root.get_child_count(); ++i)
     {
-      render_node(root.get_child(i), m_inspector_node);
+      render_node(root.get_child(i), self->inspector_node);
     }
     
     static std::vector<Nil::Node> add_nodes;
@@ -402,13 +399,13 @@ ImGUI_Aspect::think(const float dt)
     ImGui::End();
   }
   
-  Nil::Node next_inspector_node = m_inspector_node;
+  Nil::Node next_inspector_node = self->inspector_node;
   
   
   // ---------------------------------------------------------- [ Inspector ] --
   
   
-  if(m_inspector_node.is_valid())
+  if(self->inspector_node.is_valid())
   {
     bool inspector_open = true;
     ImGui::Begin("Inspector", &inspector_open);
@@ -416,26 +413,26 @@ ImGUI_Aspect::think(const float dt)
     ImGui::Text("Node Information");
     
     char name_buf[16]{0};
-    strcat(name_buf, m_inspector_node.get_name());
+    strcat(name_buf, self->inspector_node.get_name());
     
     if(ImGui::InputText("Name##Node", name_buf, 16))
     {
-      m_inspector_node.set_name(name_buf);
+      self->inspector_node.set_name(name_buf);
     }
     
-    uint32_t node_id = m_inspector_node.get_id();
+    uint32_t node_id = self->inspector_node.get_id();
     ImGui::InputInt("ID", (int*)&node_id, 0, 0, ImGuiInputTextFlags_ReadOnly);
     
     /*
       Relationships
     */
     {
-      Nil::Node parent_node = m_inspector_node.get_parent();
+      Nil::Node parent_node = self->inspector_node.get_parent();
       
       if(parent_node.is_valid())
       {
         char parent_name[32]{0};
-        strcat(parent_name, m_inspector_node.get_name());
+        strcat(parent_name, self->inspector_node.get_name());
         strcat(parent_name, "##Node");
       
         ImGui::Text("Parent:");
@@ -447,7 +444,7 @@ ImGUI_Aspect::think(const float dt)
         }
       }
       
-      const size_t child_count = m_inspector_node.get_child_count();
+      const size_t child_count = self->inspector_node.get_child_count();
       
       if(child_count)
       {
@@ -455,7 +452,7 @@ ImGUI_Aspect::think(const float dt)
         
         for(size_t i = 0; i < child_count; ++i)
         {
-          Nil::Node child_node = m_inspector_node.get_child(i);
+          Nil::Node child_node = self->inspector_node.get_child(i);
         
           ImGui::SameLine();
           
@@ -481,12 +478,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Transform Data
     */
-    if(Nil::Data::has_transform(m_inspector_node))
+    if(Nil::Data::has_transform(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Transform"))
       {
         Nil::Data::Transform trans{};
-        Nil::Data::get(m_inspector_node, trans);
+        Nil::Data::get(self->inspector_node, trans);
         
         bool update_transform = false;
         if(ImGui::DragFloat3("Position##Tra", trans.position, 0.1f)) { update_transform = true; }
@@ -495,7 +492,7 @@ ImGUI_Aspect::think(const float dt)
 
         if(update_transform)
         {
-          Nil::Data::set(m_inspector_node, trans);
+          Nil::Data::set(self->inspector_node, trans);
         }
       }
     }
@@ -504,12 +501,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Bounding Box
     */
-    if(Nil::Data::has_bounding_box(m_inspector_node))
+    if(Nil::Data::has_bounding_box(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Bounding Box"))
       {
         Nil::Data::Bounding_box box{};
-        Nil::Data::get(m_inspector_node, box);
+        Nil::Data::get(self->inspector_node, box);
         
         bool update_bounding_box = false;
         if(ImGui::DragFloat3("Min##BB", box.min, 0.1f)) { update_bounding_box = true; }
@@ -517,7 +514,7 @@ ImGUI_Aspect::think(const float dt)
         
         if(update_bounding_box)
         {
-          Nil::Data::set(m_inspector_node, box);
+          Nil::Data::set(self->inspector_node, box);
         }
       }
     }
@@ -533,12 +530,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Camera
     */
-    if(Nil::Data::has_camera(m_inspector_node))
+    if(Nil::Data::has_camera(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Camera"))
       {
         Nil::Data::Camera cam{};
-        Nil::Data::get(m_inspector_node, cam);
+        Nil::Data::get(self->inspector_node, cam);
         
         const char *proj[]
         {
@@ -559,7 +556,7 @@ ImGUI_Aspect::think(const float dt)
         
         if(update_cam)
         {
-          Nil::Data::set(m_inspector_node, cam);
+          Nil::Data::set(self->inspector_node, cam);
         }
       }
     }
@@ -568,7 +565,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Collider
     */
-    if(Nil::Data::has_collider(m_inspector_node))
+    if(Nil::Data::has_collider(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Collider"))
       {
@@ -579,12 +576,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Developer Data
     */
-    if(Nil::Data::has_developer(m_inspector_node))
+    if(Nil::Data::has_developer(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Developer"))
       {
         Nil::Data::Developer dev{};
-        Nil::Data::get(m_inspector_node, dev);
+        Nil::Data::get(self->inspector_node, dev);
         
         bool update_developer = false;
         if(ImGui::InputInt("AUX0", (int*)&dev.aux_01)) { update_developer = true; }
@@ -594,7 +591,7 @@ ImGUI_Aspect::think(const float dt)
         
         if(update_developer)
         {
-          Nil::Data::set(m_inspector_node, dev);
+          Nil::Data::set(self->inspector_node, dev);
         }
       }
     }
@@ -603,7 +600,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Gamepad
     */
-    if(Nil::Data::has_gamepad(m_inspector_node))
+    if(Nil::Data::has_gamepad(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Gamepad"))
       {
@@ -615,12 +612,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Graphics
     */
-    if(Nil::Data::has_graphics(m_inspector_node))
+    if(Nil::Data::has_graphics(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Graphics"))
       {
         Nil::Data::Graphics gfx{};
-        Nil::Data::get(m_inspector_node, gfx);
+        Nil::Data::get(self->inspector_node, gfx);
       
         bool update_gfx = false;
         
@@ -636,7 +633,7 @@ ImGUI_Aspect::think(const float dt)
         
         if(update_gfx)
         {
-          Nil::Data::set(m_inspector_node, gfx);
+          Nil::Data::set(self->inspector_node, gfx);
         }
       }
     }
@@ -645,7 +642,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Keyboard
     */
-    if(Nil::Data::has_keyboard(m_inspector_node))
+    if(Nil::Data::has_keyboard(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Keyboard"))
       {
@@ -657,7 +654,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Light
     */
-    if(Nil::Data::has_light(m_inspector_node))
+    if(Nil::Data::has_light(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Light"))
       {
@@ -669,12 +666,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Logic
     */
-    if(Nil::Data::has_logic(m_inspector_node))
+    if(Nil::Data::has_logic(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Logic"))
       {
         Nil::Data::Logic logic{};
-        Nil::Data::get(m_inspector_node, logic);
+        Nil::Data::get(self->inspector_node, logic);
       
         bool update_logic = false;
         
@@ -685,7 +682,7 @@ ImGUI_Aspect::think(const float dt)
 
         if(update_logic)
         {
-          Nil::Data::set(m_inspector_node, logic);
+          Nil::Data::set(self->inspector_node, logic);
         }
       }
     }
@@ -694,12 +691,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Material
     */
-    if(Nil::Data::has_material(m_inspector_node))
+    if(Nil::Data::has_material(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Material"))
       {
         Nil::Data::Material mat{};
-        Nil::Data::get(m_inspector_node, mat);
+        Nil::Data::get(self->inspector_node, mat);
         
         bool update_mat = false;
         
@@ -720,7 +717,7 @@ ImGUI_Aspect::think(const float dt)
         
         if(update_mat)
         {
-          Nil::Data::set(m_inspector_node, mat);
+          Nil::Data::set(self->inspector_node, mat);
         }
       }
     }
@@ -729,7 +726,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Mesh
     */
-    if(Nil::Data::has_mesh(m_inspector_node))
+    if(Nil::Data::has_mesh(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Mesh"))
       {
@@ -741,12 +738,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Mesh Resource
     */
-    if(Nil::Data::has_mesh_resource(m_inspector_node))
+    if(Nil::Data::has_mesh_resource(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Mesh_resource"))
       {
         Nil::Data::Mesh_resource mesh_resource{};
-        Nil::Data::get(m_inspector_node, mesh_resource);
+        Nil::Data::get(self->inspector_node, mesh_resource);
         
         float columns = 3; // put position as default.
         
@@ -845,7 +842,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Mouse
     */
-    if(Nil::Data::has_mouse(m_inspector_node))
+    if(Nil::Data::has_mouse(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Mouse"))
       {
@@ -857,12 +854,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Resource
     */
-    if(Nil::Data::has_resource(m_inspector_node))
+    if(Nil::Data::has_resource(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Resource"))
       {
         Nil::Data::Resource resource{};
-        Nil::Data::get(m_inspector_node, resource);
+        Nil::Data::get(self->inspector_node, resource);
       
         ImGui::Text("Resources are readonly atm");
         
@@ -876,7 +873,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Rigidbody
     */
-    if(Nil::Data::has_rigidbody(m_inspector_node))
+    if(Nil::Data::has_rigidbody(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Rigidbody"))
       {
@@ -888,7 +885,7 @@ ImGUI_Aspect::think(const float dt)
     /*
       Texture
     */
-    if(Nil::Data::has_texture(m_inspector_node))
+    if(Nil::Data::has_texture(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Texture"))
       {
@@ -900,12 +897,12 @@ ImGUI_Aspect::think(const float dt)
     /*
       Window Data
     */
-    if(Nil::Data::has_window(m_inspector_node))
+    if(Nil::Data::has_window(self->inspector_node))
     {
       if(ImGui::CollapsingHeader("Window"))
       {
         Nil::Data::Window window{};
-        Nil::Data::get(m_inspector_node, window);
+        Nil::Data::get(self->inspector_node, window);
         
         bool update_window = false;
         if(ImGui::InputText("Window Title##Win", window.title, 32))          { update_window = true; }
@@ -915,7 +912,7 @@ ImGUI_Aspect::think(const float dt)
         
         if(update_window)
         {
-          Nil::Data::set(m_inspector_node, window);
+          Nil::Data::set(self->inspector_node, window);
         }
       }
     }
@@ -955,136 +952,136 @@ ImGUI_Aspect::think(const float dt)
       {
         case(1):
         {
-          if(!Nil::Data::has_camera(m_inspector_node))
+          if(!Nil::Data::has_camera(self->inspector_node))
           {
             Nil::Data::Camera data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(2):
         {
-          if(!Nil::Data::has_collider(m_inspector_node))
+          if(!Nil::Data::has_collider(self->inspector_node))
           {
             Nil::Data::Collider data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(3):
         {
-          if(!Nil::Data::has_developer(m_inspector_node))
+          if(!Nil::Data::has_developer(self->inspector_node))
           {
             Nil::Data::Developer data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(4):
         {
-          if(!Nil::Data::has_gamepad(m_inspector_node))
+          if(!Nil::Data::has_gamepad(self->inspector_node))
           {
             Nil::Data::Gamepad data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(5):
         {
-          if(!Nil::Data::has_graphics(m_inspector_node))
+          if(!Nil::Data::has_graphics(self->inspector_node))
           {
             Nil::Data::Graphics data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(6):
         {
-          if(!Nil::Data::has_keyboard(m_inspector_node))
+          if(!Nil::Data::has_keyboard(self->inspector_node))
           {
             Nil::Data::Keyboard data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(7):
         {
-          if(!Nil::Data::has_light(m_inspector_node))
+          if(!Nil::Data::has_light(self->inspector_node))
           {
             Nil::Data::Light data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(8):
         {
-          if(!Nil::Data::has_logic(m_inspector_node))
+          if(!Nil::Data::has_logic(self->inspector_node))
           {
             Nil::Data::Logic data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(9):
         {
-          if(!Nil::Data::has_material(m_inspector_node))
+          if(!Nil::Data::has_material(self->inspector_node))
           {
             Nil::Data::Material data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(10):
         {
-          if(!Nil::Data::has_mesh(m_inspector_node))
+          if(!Nil::Data::has_mesh(self->inspector_node))
           {
             Nil::Data::Mesh data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(11):
         {
-          if(!Nil::Data::has_mouse(m_inspector_node))
+          if(!Nil::Data::has_mouse(self->inspector_node))
           {
             Nil::Data::Mouse data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(12):
         {
-          if(!Nil::Data::has_resource(m_inspector_node))
+          if(!Nil::Data::has_resource(self->inspector_node))
           {
             Nil::Data::Resource data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(13):
         {
-          if(!Nil::Data::has_rigidbody(m_inspector_node))
+          if(!Nil::Data::has_rigidbody(self->inspector_node))
           {
             Nil::Data::Rigidbody data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(14):
         {
-          if(!Nil::Data::has_texture(m_inspector_node))
+          if(!Nil::Data::has_texture(self->inspector_node))
           {
             Nil::Data::Texture data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
         case(15):
         {
-          if(!Nil::Data::has_window(m_inspector_node))
+          if(!Nil::Data::has_window(self->inspector_node))
           {
             Nil::Data::Window data{};
-            Nil::Data::set(m_inspector_node, data);
+            Nil::Data::set(self->inspector_node, data);
           }
           break;
         }
@@ -1110,7 +1107,7 @@ ImGUI_Aspect::think(const float dt)
     
       if (ImGui::Button("OK", ImVec2(120,0)))
       {
-        m_inspector_node.destroy();
+        self->inspector_node.destroy();
         ImGui::CloseCurrentPopup();
       }
       
@@ -1127,11 +1124,11 @@ ImGUI_Aspect::think(const float dt)
     
     ImGui::End();
     
-    m_inspector_node = next_inspector_node;
+    self->inspector_node = next_inspector_node;
     
     if(!inspector_open)
     {
-      m_inspector_node = Nil::Node(nullptr);
+      self->inspector_node = Nil::Node(nullptr);
     }
   }
   
@@ -1139,21 +1136,21 @@ ImGUI_Aspect::think(const float dt)
   // ---------------------------------------------------------- [ Main Menu ] --
   
   
-  if(m_show_menu)
+  if(self->show_menu)
   {
     ImGui::BeginMainMenuBar();
     
     if(ImGui::BeginMenu("Nil"))
     {
-      ImGui::MenuItem("Graph", nullptr, &m_show_graph);
-      ImGui::MenuItem("Data", nullptr, &m_show_data);
-      ImGui::MenuItem("Node Events", nullptr, &m_show_node_events);
+      ImGui::MenuItem("Graph", nullptr, &self->show_graph);
+      ImGui::MenuItem("Data", nullptr, &self->show_data);
+      ImGui::MenuItem("Node Events", nullptr, &self->show_node_events);
       
       ImGui::Separator();
       
       if(ImGui::MenuItem("Quit"))
       {
-        set_quit_signal();
+        aspect.want_to_quit = true;
       }
       
       ImGui::EndMenu();
@@ -1165,6 +1162,7 @@ ImGUI_Aspect::think(const float dt)
 }
 
 
+} // ns
 } // ns
 
 
