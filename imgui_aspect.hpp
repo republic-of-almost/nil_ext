@@ -14,6 +14,18 @@ namespace Nil_ext {
 namespace ImGui_Aspect {
 
 
+// -------------------------------------------------- [ ImGUI Aspect Config ] --
+
+
+/*
+  To hook onto UI add developer data with this type id.
+  Put callbacks for Imgui
+  AUX 01 uintptr_t For Aspects Debug Menu.
+  AUX 02 uintptr_t For Aspects Window Render.
+*/
+constexpr uint32_t developer_type_id = 1;
+
+
 // ---------------------------------------------------- [ ImGUI Aspect Data ] --
 
 
@@ -24,6 +36,9 @@ struct Data
   bool show_data;
   bool show_node_events;
   bool show_menu;
+  
+  std::vector<Nil::Node> dev_nodes;
+  std::vector<Nil::Data::Developer> dev_data;
 };
 
 
@@ -32,6 +47,10 @@ struct Data
 
 void
 start_up(Nil::Engine &engine, Nil::Aspect &aspect);
+
+
+void
+events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list);
 
 
 void
@@ -66,7 +85,7 @@ namespace Nil_ext {
 namespace ImGui_Aspect {
 
 
-// ---------------------------------------------------- [ ImGUI Aspect Impl ] --
+// --------------------------------------------- [ ImGUI Aspect Impl Statup ] --
 
 
 void
@@ -80,7 +99,76 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   self->show_data = false;
   self->show_node_events = false;
   self->show_menu = true;
+  
+  // Aspects can hook into UI callbacks with developer data.
+  aspect.data_types = 0;
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Developer{});
 }
+
+
+// --------------------------------------------- [ ImGUI Aspect Impl Events ] --
+
+
+void
+events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
+{
+  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+  LIB_ASSERT(self);
+
+  Nil::Event_data evt{};
+  
+  while(event_list.get(evt))
+  {
+    const Nil::Node evt_node(evt.node_id);
+  
+    if(!Nil::Event::node_removed(evt))
+    {
+      if(Nil::Data::has_developer(evt_node))
+      {
+        Nil::Data::Developer data{};
+        Nil::Data::get(evt_node, data);
+        
+        bool exists = false;
+        
+        for(size_t i = 0; i < self->dev_nodes.size(); ++i)
+        {
+          const Nil::Node &node = self->dev_nodes[i];
+        
+          if(node.get_id() == evt.node_id)
+          {
+            exists = true;
+            self->dev_data[i] = data;
+          }
+        }
+        
+        if(!exists)
+        {
+          self->dev_nodes.emplace_back(evt_node);
+          self->dev_data.emplace_back(data);
+          
+          LIB_ASSERT(self->dev_nodes.size() == self->dev_data.size());
+        }
+      }
+    } // if add / update
+    
+    else
+    {
+      for(size_t i = 0; i < self->dev_nodes.size(); ++i)
+      {
+        const Nil::Node &node = self->dev_nodes[i];
+      
+        if(node == evt_node)
+        {
+          self->dev_data.erase(std::begin(self->dev_data) + i);
+          self->dev_nodes.erase(std::begin(self->dev_nodes) + i);
+        }
+      }
+    } // else remove
+  } // while events
+}
+
+
+// ---------------------------------------------- [ ImGUI Aspect Impl Think ] --
 
 
 namespace {
@@ -145,7 +233,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
   {
     ImGui::Begin("Node Events", &self->show_node_events);
     
-    Nil::Engine_settings set;
+    Nil::Engine_settings set{};
     engine.get_settings(set);
     
     Nil::Engine_state stat;
@@ -187,10 +275,10 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       
       ImGui::NextColumn();
       
-      ImGui::Text(Nil::Event::node_added(stat.node_events[i]) ? "YES" : "NO");  ImGui::NextColumn();
+      ImGui::Text(Nil::Event::node_added(stat.node_events[i]) ? "YES" : "NO");    ImGui::NextColumn();
       ImGui::Text(Nil::Event::node_updated(stat.node_events[i]) ? "YES" : "NO");  ImGui::NextColumn();
-      ImGui::Text(Nil::Event::node_moved(stat.node_events[i]) ? "YES" : "NO"); ImGui::NextColumn();
-      ImGui::Text(Nil::Event::node_removed(stat.node_events[i]) ? "YES" : "NO"); ImGui::NextColumn();
+      ImGui::Text(Nil::Event::node_moved(stat.node_events[i]) ? "YES" : "NO");    ImGui::NextColumn();
+      ImGui::Text(Nil::Event::node_removed(stat.node_events[i]) ? "YES" : "NO");  ImGui::NextColumn();
     }
     ImGui::Columns(1);
     
@@ -1156,9 +1244,26 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       ImGui::EndMenu();
     }
     
+    for(auto &menu : self->dev_data)
+    {
+      using fn = void(*)(uintptr_t user_data);
+      
+      ((fn)menu.aux_01)(menu.aux_02);
+    }
     
     ImGui::EndMainMenuBar();
   }
+  
+  
+  // --------------------------------------------------------- [ Other Menu ] --
+  
+  for(auto &menu : self->dev_data)
+  {
+    using fn = void(*)(uintptr_t user_data);
+    
+    ((fn)menu.aux_03)(menu.aux_04);
+  }
+  
 }
 
 

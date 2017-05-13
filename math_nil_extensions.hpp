@@ -10,6 +10,9 @@
 namespace math {
 
 
+// ---------------------------------------- [ Math Extensions World Vectors ] --
+
+
 inline math::vec3
 vec3_nil_world_up()
 {
@@ -22,6 +25,9 @@ vec3_nil_world_fwd()
 {
   return math::vec3_init(0,0,1);
 }
+
+
+// ------------------------------------- [ Math Extensions Mat4 Conversions ] --
 
 
 inline math::mat4

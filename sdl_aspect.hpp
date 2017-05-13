@@ -16,9 +16,7 @@
 
 #define SDL_ASPECT_IMGUI_SUPPORT
 #define SDL_ASPECT_IMGUIZMO_SUPPORT
-
-
-
+#define IMGUI_DEVELOPER_SUPPORT
 
 
 namespace Nil_ext {
@@ -30,10 +28,25 @@ namespace SDL_Aspect {
 
 struct Data
 {
+  // Window GL State
+
   SDL_Window *sdl_window;
   SDL_GLContext sdl_gl_context;
   
   Nil::Node window_node;
+  
+  // Input State
+  
+  int32_t mouse_delta[2];
+  int32_t mouse[2];
+  
+  // Debug UI
+  
+  #ifdef IMGUI_DEVELOPER_SUPPORT
+  bool sdl_show_info;
+  bool sdl_show_raw_input;
+  bool sdl_show_settings;
+  #endif
 };
 
 
@@ -77,6 +90,7 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect);
 #include <nil/aspect.hpp>
 #include <utilities/utilities.hpp>
 #include <math/math.hpp>
+#include <stddef.h>
 
 
 #ifdef SDL_ASPECT_IMGUI_SUPPORT
@@ -119,6 +133,12 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   
   aspect.data_types = 0;
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Window{});
+  
+  #ifdef IMGUI_DEVELOPER_SUPPORT
+  self->sdl_show_info = false;
+  self->sdl_show_settings = false;
+  self->sdl_show_raw_input = false;
+  #endif
 }
 
 
@@ -142,7 +162,6 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
       if(!valid_window_node || updating_current)
       {
         self->window_node = node;
-//        self->update = true;
       }
       else
       {
@@ -153,12 +172,126 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
 }
 
 
+#ifdef IMGUI_DEVELOPER_SUPPORT
+
+// ----------------------------------------------------- [ SDL Aspect IMGUI ] --
+
+namespace {
+
+
+inline void
+sdl_aspect_debug_menu(uintptr_t user_data)
+{
+  Nil_ext::SDL_Aspect::Data *self = reinterpret_cast<Nil_ext::SDL_Aspect::Data*>(user_data);
+  LIB_ASSERT(self);
+
+  if(ImGui::BeginMenu("SDL"))
+  {
+    ImGui::MenuItem("Info", nullptr, &self->sdl_show_info);
+    ImGui::MenuItem("Settings", nullptr, &self->sdl_show_settings);
+    ImGui::MenuItem("Raw Input", nullptr, &self->sdl_show_raw_input);
+    
+    ImGui::EndMenu();
+  }
+}
+
+
+inline void
+sdl_aspect_debug_window(uintptr_t user_data)
+{
+  Nil_ext::SDL_Aspect::Data *self = reinterpret_cast<Nil_ext::SDL_Aspect::Data*>(user_data);
+  LIB_ASSERT(self);
+
+  if(self->sdl_show_info)
+  {
+    ImGui::Begin("SDL Info", &self->sdl_show_info);
+    
+    ImGui::Text("Platform: %s", SDL_GetPlatform());
+    SDL_version ver;
+    SDL_GetVersion(&ver);
+    
+    ImGui::Text("SDL Linked Version: %d.%d.%d", ver.major, ver.minor, ver.patch);
+
+    SDL_VERSION(&ver);
+    
+    ImGui::Text("SDL Compiled Version: %d.%d.%d", ver.major, ver.minor, ver.patch);
+    
+    if(ImGui::CollapsingHeader("CPU Info"))
+    {
+      ImGui::Text("Cache Line (Bytes): %d", SDL_GetCPUCacheLineSize());
+      ImGui::Text("CPU Count: %d",          SDL_GetCPUCount());
+      ImGui::Text("RAM (MB): %d",           SDL_GetSystemRAM());
+    
+      ImGui::Text("SSE: %s",    SDL_HasSSE()   ? "YES" : "NO");
+      ImGui::Text("SSE2: %s",   SDL_HasSSE2()  ? "YES" : "NO");
+      ImGui::Text("SSE3: %s",   SDL_HasSSE3()  ? "YES" : "NO");
+      ImGui::Text("SSE41: %s",  SDL_HasSSE41() ? "YES" : "NO");
+      ImGui::Text("SSE42: %s",  SDL_HasSSE42() ? "YES" : "NO");
+    }
+    
+    if(ImGui::CollapsingHeader("GPU Info"))
+    {
+      ImGui::Text("Curr Driver: %s", SDL_GetCurrentVideoDriver());
+      
+      const size_t drivers = SDL_GetNumVideoDrivers();
+      
+      for(size_t i = 0; i < drivers; ++i)
+      {
+        ImGui::Text("%lu : %s", i + 1, SDL_GetVideoDriver(i));
+      }
+    }
+    
+    ImGui::End();
+  }
+  
+  if(self->sdl_show_settings)
+  {
+    ImGui::Begin("SDL Settings", &self->sdl_show_settings);
+    
+    bool v_sync = !!SDL_GL_GetSwapInterval();
+    if(ImGui::Checkbox("GL VSync", &v_sync))
+    {
+      SDL_GL_SetSwapInterval(v_sync ? 1 : 0);
+    }
+    
+    ImGui::End();
+  }
+  
+  if(self->sdl_show_raw_input)
+  {
+    ImGui::Begin("SDL Input", &self->sdl_show_raw_input);
+    
+    if(ImGui::CollapsingHeader("Keyboard"))
+    {
+      
+    }
+    
+    if(ImGui::CollapsingHeader("Mouse"))
+    {
+      ImGui::InputInt2("Position", self->mouse, ImGuiInputTextFlags_ReadOnly);
+      ImGui::InputInt2("Delta", self->mouse_delta, ImGuiInputTextFlags_ReadOnly);
+    }
+    
+    if(ImGui::CollapsingHeader("Gamepads"))
+    {
+      
+    }
+    
+    ImGui::End();
+  }
+}
+
+
+} // anon ns
+#endif
+
+
 void
 early_think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
-
+  
   if(self->window_node.is_valid())
   {
     Nil::Data::Window window_data;
@@ -278,7 +411,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       
       gl3wInit();
       
-      Nil::Data::Graphics gfx;
+      Nil::Data::Graphics gfx{};
       gfx.type = Nil::Data::Graphics::OGL;
       
       glGetIntegerv(GL_MAJOR_VERSION, (GLint*)&gfx.major);
@@ -293,6 +426,18 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       
       #ifdef SDL_ASPECT_IMGUIZMO_SUPPORT
       ImGuizmo::BeginFrame();
+      #endif
+      
+      #ifdef IMGUI_DEVELOPER_SUPPORT
+      Nil::Data::Developer dev{};
+      dev.type_id = 1;
+      dev.aux_01 = (uintptr_t)sdl_aspect_debug_menu;
+      dev.aux_02 = (uintptr_t)self;
+      
+      dev.aux_03 = (uintptr_t)sdl_aspect_debug_window;
+      dev.aux_04 = (uintptr_t)self;
+
+      Nil::Data::set(self->window_node, dev);
       #endif
     }
     
@@ -312,6 +457,11 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
+  
+  // Reset Input
+  {
+    memset(self->mouse_delta, 0, sizeof(Nil_ext::SDL_Aspect::Data::mouse));
+  }
 
   if(self->sdl_window)
   {
@@ -389,10 +539,10 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
             
             if(mouse_id == 0)
             {
-    //          input::detail::mouse_set_delta_x(evt.motion.xrel);
-    //          input::detail::mouse_set_delta_y(evt.motion.yrel);
-    //          input::detail::mouse_set_x(evt.motion.x);
-    //          input::detail::mouse_set_y(evt.motion.y);
+              self->mouse[0] = evt.motion.x;
+              self->mouse[1] = evt.motion.y;
+              self->mouse_delta[0] = evt.motion.xrel;
+              self->mouse_delta[1] = evt.motion.yrel;
             }
           
             break;
