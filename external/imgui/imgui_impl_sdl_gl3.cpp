@@ -341,7 +341,7 @@ bool    ImGui_ImplSdlGL3_Init(SDL_Window* window)
   /*
     style
   */
-        ImGuiStyle& style = ImGui::GetStyle();
+//        ImGuiStyle& style = ImGui::GetStyle();
   
         // light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
 //        style.Alpha = 1.0f;

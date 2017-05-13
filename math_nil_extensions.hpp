@@ -35,7 +35,7 @@ mat4_from_nil_transform(const Nil::Data::Transform &trans)
 {
   const math::vec3 pos = math::vec3_init_with_array(trans.position);
   const math::vec3 scale = math::vec3_init_with_array(trans.scale);
-  const math::quat rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
+//  const math::quat rot = math::quat_init(trans.rotation[0], trans.rotation[1], trans.rotation[2], trans.rotation[3]);
 
   const math::mat4 pos_mat = math::mat4_translate(pos);
   const math::mat4 scale_mat = math::mat4_scale(scale);

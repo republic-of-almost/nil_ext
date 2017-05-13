@@ -160,7 +160,7 @@ renderer_aspect_debug_window(uintptr_t user_data)
 
         if (ImGui::Selectable(label, selected == self->camera_nodes[i].get_id(), ImGuiSelectableFlags_SpanAllColumns))
         {
-          selected = i;
+          selected = (int)i;
         }
       
         ImGui::NextColumn();
@@ -195,7 +195,7 @@ renderer_aspect_debug_window(uintptr_t user_data)
 
         if (ImGui::Selectable(label, selected == self->renderable_nodes[i].get_id(), ImGuiSelectableFlags_SpanAllColumns))
         {
-          selected = i;
+          selected = (int)i;
         }
       
         ImGui::NextColumn();

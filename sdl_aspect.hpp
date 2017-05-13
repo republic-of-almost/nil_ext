@@ -233,11 +233,11 @@ sdl_aspect_debug_window(uintptr_t user_data)
     {
       ImGui::Text("Curr Driver: %s", SDL_GetCurrentVideoDriver());
       
-      const size_t drivers = SDL_GetNumVideoDrivers();
+      const int drivers = SDL_GetNumVideoDrivers();
       
-      for(size_t i = 0; i < drivers; ++i)
+      for(int i = 0; i < drivers; ++i)
       {
-        ImGui::Text("%lu : %s", i + 1, SDL_GetVideoDriver(i));
+        ImGui::Text("%d : %s", i + 1, SDL_GetVideoDriver(i));
       }
     }
     
