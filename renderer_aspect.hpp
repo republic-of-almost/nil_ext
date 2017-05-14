@@ -24,7 +24,13 @@ namespace ROV_Aspect {
 
 struct Data
 {
+  uint32_t current_viewport[2];
+
+  // Meshes //
+
   std::vector<Nil::Node> pending_mesh_load;
+  
+  // Camera //
   
   struct ROV_Camera
   {
@@ -38,6 +44,8 @@ struct Data
   std::vector<Nil::Node>  pending_camera_node_removals;
   std::vector<Nil::Node>  camera_nodes;
   std::vector<ROV_Camera> rov_camera;
+  
+  // Draw Calls //
   
   struct ROV_Renderable
   {
@@ -102,6 +110,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect);
 #include <external/rov/rov.hpp>
 
 #include <nil/node.hpp>
+#include <nil/data/window.hpp>
 #include <math_nil_extensions.hpp>
 
 #ifdef IMGIZMO_DEVELOPER_SUPPORT
@@ -110,7 +119,9 @@ think(Nil::Engine &engine, Nil::Aspect &aspect);
 
 #ifdef IMGUI_DEVELOPER_SUPPORT
 
-// ----------------------------------------------------- [ SDL Aspect IMGUI ] --
+
+// ------------------------------------------------ [ Renderer Aspect IMGUI ] --
+
 
 namespace {
 
@@ -227,7 +238,6 @@ renderer_aspect_debug_window(uintptr_t user_data)
 #endif
 
 
-
 namespace Nil_ext {
 namespace ROV_Aspect {
 
@@ -241,6 +251,9 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
   
+  self->current_viewport[0] = 800;
+  self->current_viewport[1] = 600;
+  
   aspect.data_types = 0;
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Camera{});
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Material{});
@@ -249,6 +262,7 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Resource{});
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Graphics{});
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Mesh_resource{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Window{});
   
   #ifdef IMGUI_DEVELOPER_SUPPORT
   self->renderer_show_info     = false;
@@ -302,6 +316,24 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
       if(Nil::Data::has_material(node))
       {
         self->pending_renderable_node_updates.emplace_back(node);
+      }
+      
+      /*
+        Viewport changes mean we need to regenerate projection mats
+        so we just regenerate all the cameras.
+      */
+      if(Nil::Data::has_window(node))
+      {
+        Nil::Data::Window win{};
+        Nil::Data::get(node, win);
+        
+        self->current_viewport[0] = win.width;
+        self->current_viewport[1] = win.height;
+        
+        for(auto cam : self->camera_nodes)
+        {
+          self->pending_camera_node_updates.emplace_back(cam);
+        }
       }
       
       if(Nil::Data::has_graphics(node))
@@ -432,7 +464,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         const Data::ROV_Camera rov_camera
         {
           math::mat4_lookat_from_nil_transform(trans),
-          math::mat4_projection_from_nil_camera(cam_data),
+          math::mat4_projection_from_nil_camera(cam_data, self->current_viewport),
           clear_flags
         };
         
@@ -513,7 +545,13 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       );
       #endif
     
-      rov_startRenderPass(math::mat4_get_data(cam.view), math::mat4_get_data(cam.proj), cam.clear_flags);
+      const uint32_t viewport[4] {0,0,self->current_viewport[0], self->current_viewport[1]};
+    
+      rov_startRenderPass(
+        math::mat4_get_data(cam.view),
+        math::mat4_get_data(cam.proj),
+        viewport,
+        cam.clear_flags);
       
       for(auto &render : self->renderables)
       {

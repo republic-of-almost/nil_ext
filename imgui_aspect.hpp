@@ -634,8 +634,8 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
         bool update_cam = false;
         if(ImGui::Combo("Projection##Cam", (int*)&cam.type, proj, 2)) { update_cam = true; }
         if(ImGui::DragInt("Priority##Cam",  (int*)&cam.priority))     { update_cam = true; }
-        if(ImGui::DragInt("Width##Cam",  (int*)&cam.width))           { update_cam = true; }
-        if(ImGui::DragInt("Height##Cam", (int*)&cam.height))          { update_cam = true; }
+        if(ImGui::DragFloat("Width##Cam",  &cam.width, 0.01f))           { update_cam = true; }
+        if(ImGui::DragFloat("Height##Cam", &cam.height, 0.01f))          { update_cam = true; }
         if(ImGui::DragFloat("FOV##Cam",  &cam.fov, 0.01f))                   { update_cam = true; }
         if(ImGui::DragFloat("Near Plane##Cam",  &cam.near_plane, 0.1f))     { update_cam = true; }
         if(ImGui::DragFloat("Far Plane##Cam",  &cam.far_plane, 0.1f))       { update_cam = true; }

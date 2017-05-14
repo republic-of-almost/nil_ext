@@ -42,7 +42,7 @@ uint32_t    rov_createMesh(const float *pos, const float *normals, const float *
 // ----------------------------------------------------------- [ Renderpass ] --
 
 
-void        rov_startRenderPass(const float view[16], const float proj[16], uint32_t clear_flags);
+void        rov_startRenderPass(const float view[16], const float proj[16], const uint32_t viewport[4], uint32_t clear_flags);
 
 
 // ----------------------------------------------------- [ General Settings ] --
@@ -125,6 +125,8 @@ namespace
     rovMat4 view;
     rovMat4 proj;
     
+    uint32_t viewport[4];
+    
     uint32_t clear_flags;
     
     std::vector<rovMaterial> materials;
@@ -170,12 +172,14 @@ namespace
 
 
 void
-rov_startRenderPass(const float view[16], const float proj[16], uint32_t clear_flags)
+rov_startRenderPass(const float view[16], const float proj[16], const uint32_t viewport[4], uint32_t clear_flags)
 {
   rov_render_passes.emplace_back();
   
   memcpy(rov_render_passes.back().view.data, view, sizeof(float) * 16);
   memcpy(rov_render_passes.back().proj.data, proj, sizeof(float) * 16);
+  
+  memcpy(rov_render_passes.back().viewport, viewport, sizeof(rovRenderPass::viewport));
   
   rov_render_passes.back().clear_flags = clear_flags;
   
@@ -691,14 +695,14 @@ rov_execute()
   */
   for(auto &rp : rov_render_passes)
   {
-    GLbitfield clear_flags = 0;
-    if(rp.clear_flags & rovClearFlag_Color) { clear_flags |= GL_COLOR_BUFFER_BIT; }
-    if(rp.clear_flags & rovClearFlag_Depth) { clear_flags |= GL_DEPTH_BUFFER_BIT; }
+    GLbitfield cl_flags = 0;
+    if(rp.clear_flags & rovClearFlag_Color) { cl_flags |= GL_COLOR_BUFFER_BIT; }
+    if(rp.clear_flags & rovClearFlag_Depth) { cl_flags |= GL_DEPTH_BUFFER_BIT; }
     
     glClearColor(1, 1, 0, 1);
-    glClear(clear_flags);
+    glClear(cl_flags);
     glEnable(GL_DEPTH_TEST);
-    glViewport(0, 0, 1280, 720);
+    glViewport(rp.viewport[0], rp.viewport[1], rp.viewport[2], rp.viewport[3]);
     
     const math::mat4 proj = math::mat4_init_with_array(rp.proj.data);
     const math::mat4 view = math::mat4_init_with_array(rp.view.data);
@@ -747,7 +751,14 @@ rov_execute()
           if(rov_mesh_shaders[shader].vs_in_pos >= 0)
           {
             glEnableVertexAttribArray(rov_mesh_shaders[shader].vs_in_pos);
-            glVertexAttribPointer(rov_mesh_shaders[shader].vs_in_pos, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)pointer);
+            glVertexAttribPointer(
+              rov_mesh_shaders[shader].vs_in_pos,
+              3,
+              GL_FLOAT,
+              GL_FALSE,
+              8 * sizeof(float),
+              (void*)pointer
+            );
           }
           
           pointer += (sizeof(float) * 3);
@@ -755,7 +766,14 @@ rov_execute()
           if(rov_mesh_shaders[shader].vs_in_norm >= 0)
           {
             glEnableVertexAttribArray(rov_mesh_shaders[shader].vs_in_norm);
-            glVertexAttribPointer(rov_mesh_shaders[shader].vs_in_norm, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)pointer);
+            glVertexAttribPointer(
+              rov_mesh_shaders[shader].vs_in_norm,
+              3,
+              GL_FLOAT,
+              GL_FALSE,
+              8 * sizeof(float),
+              (void*)pointer
+            );
           }
           
           pointer += (sizeof(float) * 3);
@@ -763,7 +781,14 @@ rov_execute()
           if(rov_mesh_shaders[shader].vs_in_uv)
           {
             glEnableVertexAttribArray(rov_mesh_shaders[shader].vs_in_uv);
-            glVertexAttribPointer(rov_mesh_shaders[shader].vs_in_uv, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)pointer);
+            glVertexAttribPointer(
+              rov_mesh_shaders[shader].vs_in_uv,
+              2,
+              GL_FLOAT,
+              GL_FALSE,
+              8 * sizeof(float),
+              (void*)pointer
+            );
           }
         }
         
@@ -776,12 +801,7 @@ rov_execute()
         glUniformMatrix4fv(rov_mesh_shaders[shader].uni_world, 1, GL_FALSE, math::mat4_get_data(world));
         glUniform3fv(rov_mesh_shaders[shader].uni_eye, 1, pos.data);
         glUniform4fv(rov_mesh_shaders[shader].uni_color, 1, colorf);
-        
-        auto err = glGetError();
-        {;
-          printf("ERR: %d\n", err);
-        }
-        
+       
         glDrawArrays(GL_TRIANGLES, 0, 36);
       }
     }
