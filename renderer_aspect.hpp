@@ -415,7 +415,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       for(auto &node : self->pending_renderable_node_updates)
       {
         Nil::Data::Transform trans{};
-        Nil::Data::get(node, trans);
+        Nil::Data::get(node, trans, true);
       
         Nil::Data::Material mat{};
         Nil::Data::get(node, mat);
@@ -452,7 +452,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       for(auto &node : self->pending_camera_node_updates)
       {
         Nil::Data::Transform trans{};
-        Nil::Data::get(node, trans);
+        Nil::Data::get(node, trans, true);
         
         Nil::Data::Camera cam_data{};
         Nil::Data::get(node, cam_data);

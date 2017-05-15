@@ -196,6 +196,7 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
           {
             self->logic_nodes.emplace_back(node);
             self->logic.emplace_back((Logic*)data.aux_01);
+            self->logic.back()->on_start();
           }
         }
       }

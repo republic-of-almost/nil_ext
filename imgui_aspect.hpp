@@ -33,6 +33,7 @@ struct Data
 {
   Nil::Node inspector_node;
   bool show_graph;
+  bool show_raw_graph;
   bool show_data;
   bool show_node_events;
   bool show_menu;
@@ -96,6 +97,7 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   
   self->inspector_node = Nil::Node(nullptr);
   self->show_graph = true;
+  self->show_raw_graph = false;
   self->show_data = false;
   self->show_node_events = false;
   self->show_menu = true;
@@ -460,6 +462,80 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
 
     ImGui::End();
   }
+  
+  
+  // ---------------------------------------------------------- [ Raw Graph ] --
+  
+  
+  /*
+    Render Raw graph data
+  */
+  if(self->show_raw_graph)
+  {
+    ImGui::Begin("Raw Graph Data", &self->show_raw_graph);
+    
+    ImGui::BeginChild("graph_data_container", ImVec2(0, 180), false);
+    
+    ImGui::BeginChild("graph_data_names", ImVec2(110, 0), false);
+    
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Text("ID (Parent ID):");
+    ImGui::Text("Depth:");
+    ImGui::Separator();
+    ImGui::Text("Local Pos:");
+    ImGui::Text("Local Scale:");
+    ImGui::Text("Local Rot:");
+    ImGui::Separator();
+    ImGui::Text("World Pos:");
+    ImGui::Text("World Scale:");
+    ImGui::Text("World Rot:");
+    
+    ImGui::EndChild();
+    
+    ImGui::SameLine();
+    
+    ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+  
+    const size_t graph_count = engine.graph_data_count();
+    
+    for(size_t i = 0; i < graph_count; ++i)
+    {
+      char graph_data[16];
+      memset(graph_data, 0, sizeof(graph_data));
+      sprintf(graph_data, "graph##%zu", i);
+      
+      ImGui::BeginChild(graph_data, ImVec2(150,0), true);
+      
+      ImGui::Text("%d(%d)", engine.graph_data_get_ids()[i], lib::bits::upper32(engine.graph_data_details()[i]));
+      ImGui::Text("%d", lib::bits::lower32(engine.graph_data_details()[i]));
+      
+      ImGui::Separator();
+      
+      math::transform l_trans = engine.graph_data_local_transforms()[i];
+      
+      ImGui::Text("%.01f, %.01f, %.1f", l_trans.position.data[0], l_trans.position.data[1], l_trans.position.data[2]);
+      ImGui::Text("%.01f, %.01f, %.1f", l_trans.scale.data[0], l_trans.scale.data[1], l_trans.scale.data[2]);
+      ImGui::Text("%.01f, %.01f, %.1f, %.1f", l_trans.rotation.data[0], l_trans.rotation.data[1], l_trans.rotation.data[2], l_trans.rotation.data[3]);
+      
+      ImGui::Separator();
+      
+      math::transform w_trans = engine.graph_data_world_transforms()[i];
+      
+      ImGui::Text("%.01f, %.01f, %.1f", w_trans.position.data[0], w_trans.position.data[1], w_trans.position.data[2]);
+      ImGui::Text("%.01f, %.01f, %.1f", w_trans.scale.data[0], w_trans.scale.data[1], w_trans.scale.data[2]);
+      ImGui::Text("%.01f, %.01f, %.1f, %.1f", w_trans.rotation.data[0], w_trans.rotation.data[1], w_trans.rotation.data[2], w_trans.rotation.data[3]);
+      
+      ImGui::EndChild();
+      
+      ImGui::SameLine();
+    }
+  
+    ImGui::EndChild();
+    ImGui::EndChild();
+    ImGui::End();
+  }
+  
   
   // -------------------------------------------------------------- [ Graph ] --
   
@@ -1231,6 +1307,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
     if(ImGui::BeginMenu("Nil"))
     {
       ImGui::MenuItem("Graph", nullptr, &self->show_graph);
+      ImGui::MenuItem("Graph-Raw", nullptr, &self->show_raw_graph);
       ImGui::MenuItem("Data", nullptr, &self->show_data);
       ImGui::MenuItem("Node Events", nullptr, &self->show_node_events);
       
