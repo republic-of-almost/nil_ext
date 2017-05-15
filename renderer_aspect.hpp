@@ -107,7 +107,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect);
 #include <GL/gl3w.h>
 
 #define ROV_GL_IMPL
-#include <external/rov/rov.hpp>
+#include <rov/rov.hpp>
 
 #include <nil/node.hpp>
 #include <nil/data/window.hpp>
