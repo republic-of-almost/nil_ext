@@ -90,6 +90,7 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect);
 #include <nil/aspect.hpp>
 #include <utilities/utilities.hpp>
 #include <math/math.hpp>
+#include <GL/gl3w.h>
 #include <stddef.h>
 
 

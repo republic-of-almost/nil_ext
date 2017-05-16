@@ -104,9 +104,9 @@ think(Nil::Engine &engine, Nil::Aspect &aspect);
 #define RENDERER_ASPECT_IMPL_C4901940_F51C_496B_A821_BDE103DB8742
 
 
-#include <GL/gl3w.h>
-
-#define ROV_GL_IMPL
+//#include <GL/gl3w.h>
+//
+//#define ROV_GL_IMPL
 #include <rov/rov.hpp>
 
 #include <nil/node.hpp>
