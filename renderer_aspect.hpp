@@ -28,6 +28,8 @@ struct Data
 
   // Meshes //
 
+  std::vector<uint32_t> external_mesh_ids;
+  std::vector<uint32_t> internal_mesh_ids;
   std::vector<Nil::Node> pending_mesh_load;
   
   // Camera //
@@ -51,6 +53,8 @@ struct Data
   {
     uint8_t shader_type;
     math::mat4 world;
+    uint32_t mesh_id;
+    
     float color[4];
   };
   
@@ -419,11 +423,26 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       
         Nil::Data::Material mat{};
         Nil::Data::get(node, mat);
+        
+        Nil::Data::Mesh mesh{};
+        Nil::Data::get(node, mesh);
+      
+        // ROV Mesh
+        uint32_t rov_mesh = 0;
+        
+        for(size_t i = 0; i < self->external_mesh_ids.size(); ++i)
+        {
+          if(self->external_mesh_ids[i] == mesh.mesh_id)
+          {
+            rov_mesh = self->internal_mesh_ids[i];
+          }
+        }
       
         Data::ROV_Renderable rov_render
         {
           (uint8_t)mat.shader,
-          math::mat4_from_nil_transform(trans)
+          math::mat4_from_nil_transform(trans),
+          rov_mesh,
         };
         
         memcpy(rov_render.color, mat.color, sizeof(Nil::Data::Material::color));
@@ -500,17 +519,12 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
     {
       for(auto &node : self->pending_mesh_load)
       {
-        static int once = 0;
+        Nil::Data::Mesh_resource mesh_resource{};
+        Nil::Data::get(node, mesh_resource);
         
-        if(once == 0)
-        {
-          Nil::Data::Mesh_resource mesh_resource{};
-          Nil::Data::get(node, mesh_resource);
-          
-          uint32_t mesh = rov_createMesh(mesh_resource.position_vec3, mesh_resource.normal_vec3, mesh_resource.texture_coords_vec2, mesh_resource.count);
-          
-          once = 1;
-        }
+        const uint32_t mesh = rov_createMesh(mesh_resource.position_vec3, mesh_resource.normal_vec3, mesh_resource.texture_coords_vec2, mesh_resource.count);
+        self->internal_mesh_ids.emplace_back(mesh);
+        self->external_mesh_ids.emplace_back(mesh_resource.id);
       }
     }
   } // Has inited and process
@@ -557,6 +571,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       {
         rov_setColor(render.color[0], render.color[1], render.color[2], render.color[3]);
         rov_setShader(render.shader_type);
+        rov_setMesh(render.mesh_id);
 
         rov_submitMeshTransform(math::mat4_get_data(render.world));
       }

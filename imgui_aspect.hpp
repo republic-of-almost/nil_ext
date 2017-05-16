@@ -596,7 +596,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       if(parent_node.is_valid())
       {
         char parent_name[32]{0};
-        strcat(parent_name, self->inspector_node.get_name());
+        strcat(parent_name, self->inspector_node.get_parent().get_name());
         strcat(parent_name, "##Node");
       
         ImGui::Text("Parent:");
