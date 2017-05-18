@@ -428,15 +428,15 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         Nil::Data::get(node, mesh);
       
         // ROV Mesh
-        uint32_t rov_mesh = 0;
+        const uint32_t rov_mesh = mesh.mesh_id;
         
-        for(size_t i = 0; i < self->external_mesh_ids.size(); ++i)
-        {
-          if(self->external_mesh_ids[i] == mesh.mesh_id)
-          {
-            rov_mesh = self->internal_mesh_ids[i];
-          }
-        }
+//        for(size_t i = 0; i < self->external_mesh_ids.size(); ++i)
+//        {
+//          if(self->external_mesh_ids[i] == mesh.mesh_id)
+//          {
+//            rov_mesh = self->internal_mesh_ids[i];
+//          }
+//        }
       
         Data::ROV_Renderable rov_render
         {
@@ -522,9 +522,15 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         Nil::Data::Mesh_resource mesh_resource{};
         Nil::Data::get(node, mesh_resource);
         
-        const uint32_t mesh = rov_createMesh(mesh_resource.position_vec3, mesh_resource.normal_vec3, mesh_resource.texture_coords_vec2, mesh_resource.count);
-        self->internal_mesh_ids.emplace_back(mesh);
-        self->external_mesh_ids.emplace_back(mesh_resource.id);
+        if(mesh_resource.status == 0)
+        {
+          const uint32_t mesh = rov_createMesh(mesh_resource.position_vec3, mesh_resource.normal_vec3, mesh_resource.texture_coords_vec2, mesh_resource.count);
+          self->internal_mesh_ids.emplace_back(mesh);
+          self->external_mesh_ids.emplace_back(mesh_resource.id);
+          
+          mesh_resource.status = 1;
+          Nil::Data::set(node, mesh_resource);
+        }
       }
     }
   } // Has inited and process
@@ -569,11 +575,14 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       
       for(auto &render : self->renderables)
       {
-        rov_setColor(render.color[0], render.color[1], render.color[2], render.color[3]);
-        rov_setShader(render.shader_type);
-        rov_setMesh(render.mesh_id);
+        if(self->internal_mesh_ids.size() > render.mesh_id)
+        {
+          rov_setColor(render.color[0], render.color[1], render.color[2], render.color[3]);
+          rov_setShader(render.shader_type);
+          rov_setMesh(self->external_mesh_ids[render.mesh_id]);
 
-        rov_submitMeshTransform(math::mat4_get_data(render.world));
+          rov_submitMeshTransform(math::mat4_get_data(render.world));
+        }
       }
     }
         
