@@ -76,6 +76,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect);
 #include <nil/aspect.hpp>
 #include <nil/data/data.hpp>
 #include <nil/node_event.hpp>
+#include <nil/nil.hpp>
 #include <nil/data/window.hpp>
 #include <imgui/imgui.h>
 #include <imguizmo/ImGuizmo.h>

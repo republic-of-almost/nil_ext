@@ -252,6 +252,8 @@ namespace ROV_Aspect {
 void
 start_up(Nil::Engine &engine, Nil::Aspect &aspect)
 {
+  LOG_INFO("Startup Renderer Aspect")
+
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
   
@@ -363,7 +365,6 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
       }
     }
   }
-
 }
 
 
@@ -425,7 +426,11 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         Nil::Data::get(node, mat);
         
         Nil::Data::Mesh mesh{};
-        Nil::Data::get(node, mesh);
+        
+        if(Nil::Data::has_mesh(node))
+        {
+          Nil::Data::get(node, mesh);
+        }
       
         // ROV Mesh
         const uint32_t rov_mesh = mesh.mesh_id;

@@ -86,13 +86,12 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect);
 
 #include <nil/node.hpp>
 #include <nil/node_event.hpp>
-#include <nil/data/window.hpp>
+#include <nil/data/data.hpp>
 #include <nil/aspect.hpp>
 #include <utilities/utilities.hpp>
 #include <math/math.hpp>
 #include <GL/gl3w.h>
 #include <stddef.h>
-
 
 #ifdef SDL_ASPECT_IMGUI_SUPPORT
 #include <imgui/imgui.h>
@@ -125,6 +124,8 @@ namespace SDL_Aspect {
 void
 start_up(Nil::Engine &engine, Nil::Aspect &aspect)
 {
+  LOG_INFO("Startup SDL Aspect");
+
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
   

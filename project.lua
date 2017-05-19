@@ -11,20 +11,23 @@ table.insert(
     kind     = "StaticLib",
     language = "C++",
     location = make.get_proj_root(),
-    no_link  = true,
 
     src_files = {
-      -- Headers
-      make.get_proj_root() .. "**.hpp",
-      make.get_proj_root() .. "**.h",
-
-      -- Doc
-      make.get_proj_root() .. "**.md",
-      make.get_proj_root() .. "**.txt",
+      make.add_headers(make.get_proj_root()),
+      make.add_src(make.get_proj_root()),
+      make.add_doc(make.get_proj_root()),
     },
 
     inc_dirs = {
       make.get_proj_root() .. "./",
+    },
+
+    project_dependencies = {
+      "Nil",
+      "Utilities",
+      "External",
+      "ROV",
+      "Math",
     },
   }
 )
