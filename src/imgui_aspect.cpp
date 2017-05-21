@@ -1,78 +1,4 @@
-/*
-  SDL_Asepct create a window.
-  and OpenGL context.
-*/
-#ifndef IMGUI_ASPECT_INCLUDED_76A60511_5EA9_453A_A2BF_6A7EC1E35B08
-#define IMGUI_ASPECT_INCLUDED_76A60511_5EA9_453A_A2BF_6A7EC1E35B08
-
-
-#include <nil/fwd.hpp>
-#include <nil/node.hpp>
-
-
-namespace Nil_ext {
-namespace ImGui_Aspect {
-
-
-// -------------------------------------------------- [ ImGUI Aspect Config ] --
-
-
-/*
-  To hook onto UI add developer data with this type id.
-  Put callbacks for Imgui
-  AUX 01 uintptr_t For Aspects Debug Menu.
-  AUX 02 uintptr_t For Aspects Window Render.
-*/
-constexpr uint32_t developer_type_id = 1;
-
-
-// ---------------------------------------------------- [ ImGUI Aspect Data ] --
-
-
-struct Data
-{
-  Nil::Node inspector_node;
-  bool show_graph;
-  bool show_raw_graph;
-  bool show_data;
-  bool show_node_events;
-  bool show_menu;
-  
-  std::vector<Nil::Node> dev_nodes;
-  std::vector<Nil::Data::Developer> dev_data;
-};
-
-
-// ----------------------------------------------- [ ImGUI Aspect Interface ] --
-
-
-void
-start_up(Nil::Engine &engine, Nil::Aspect &aspect);
-
-
-void
-events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list);
-
-
-void
-think(Nil::Engine &engine, Nil::Aspect &aspect);
-
-
-} // ns
-} // ns
-
-
-#endif // inc guard 
-
-/*
-  Implimentation.
-*/
-#ifdef IMGUI_ASPECT_IMPL
-
-#ifndef IMGUI_ASPECT_IMPL_C344ADC3_7EB9_4B5E_9B3F_D1E3627E42A7
-#define IMGUI_ASPECT_IMPL_C344ADC3_7EB9_4B5E_9B3F_D1E3627E42A7
-
-
+#include <aspect/imgui_aspect.hpp>
 #include <nil/aspect.hpp>
 #include <nil/data/data.hpp>
 #include <nil/node_event.hpp>
@@ -81,6 +7,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect);
 #include <imgui/imgui.h>
 #include <imguizmo/ImGuizmo.h>
 #include <string.h>
+#include <utilities/utilities.hpp>
 
 
 namespace Nil_ext {
@@ -96,12 +23,12 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
   
-  self->inspector_node = Nil::Node(nullptr);
-  self->show_graph = true;
-  self->show_raw_graph = false;
-  self->show_data = false;
-  self->show_node_events = false;
-  self->show_menu = true;
+  self->inspector_node    = Nil::Node(nullptr);
+  self->show_graph        = true;
+  self->show_raw_graph    = false;
+  self->show_data         = false;
+  self->show_node_events  = false;
+  self->show_menu         = true;
   
   // Aspects can hook into UI callbacks with developer data.
   aspect.data_types = 0;
@@ -1011,7 +938,21 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
     {
       if(ImGui::CollapsingHeader("Mouse"))
       {
-        ImGui::Text("No UI Impl");
+        Nil::Data::Mouse mouse{};
+        Nil::Data::get(self->inspector_node, mouse);
+        
+        constexpr ImGuiInputTextFlags_ flags = ImGuiInputTextFlags_ReadOnly;
+        
+        bool update_input = false;
+        
+        ImGui::InputInt2("Pos",   (int*)mouse.position, flags);
+        ImGui::InputInt2("Delta", (int*)mouse.delta,    flags);
+        if(ImGui::Checkbox("Capture", &mouse.capture)) { update_input = true; }
+        
+        if(update_input)
+        {
+          Nil::Data::set(self->inspector_node, mouse);
+        }
       }
     }
     
@@ -1028,9 +969,11 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       
         ImGui::Text("Resources are readonly atm");
         
-        ImGui::InputInt("Type", (int*)&resource.type, 0, 0, ImGuiInputTextFlags_ReadOnly);
-        ImGui::InputText("Name", &resource.name[0], 64, ImGuiInputTextFlags_ReadOnly);
-        ImGui::InputInt("Ptr", (int*)&resource.data, 0, 0, ImGuiInputTextFlags_ReadOnly);
+        constexpr ImGuiInputTextFlags_ flags = ImGuiInputTextFlags_ReadOnly;
+        
+        ImGui::InputInt("Type", (int*)&resource.type, 0, 0, flags);
+        ImGui::InputText("Name", &resource.name[0], 64, flags);
+        ImGui::InputInt("Ptr", (int*)&resource.data, 0, 0, flags);
       }
     }
     
@@ -1347,7 +1290,3 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
 
 } // ns
 } // ns
-
-
-#endif // impl guard
-#endif // impl request

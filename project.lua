@@ -19,7 +19,8 @@ table.insert(
     },
 
     inc_dirs = {
-      make.get_proj_root() .. "./",
+      make.get_proj_root() .. "include/",
+      make.get_proj_root() .. "src/",
     },
 
     project_dependencies = {

@@ -1,89 +1,4 @@
-/*
-  SDL_Asepct create a window.
-  and OpenGL context.
-*/
-#ifndef SDL_ASPECT_INCLUDED_F108C491_0859_490B_A447_A11A6BF860AC
-#define SDL_ASPECT_INCLUDED_F108C491_0859_490B_A447_A11A6BF860AC
-
-
-#include <nil/fwd.hpp>
-#include <nil/node.hpp>
-#include <SDL2/SDL.h>
-
-
-// ---------------------------------------------------- [ SDL Aspect Config ] --
-
-
-#define SDL_ASPECT_IMGUI_SUPPORT
-#define SDL_ASPECT_IMGUIZMO_SUPPORT
-#define IMGUI_DEVELOPER_SUPPORT
-
-
-namespace Nil_ext {
-namespace SDL_Aspect {
-
-
-// ------------------------------------------------------ [ SDL Aspect Data ] --
-
-
-struct Data
-{
-  // Window GL State
-
-  SDL_Window *sdl_window;
-  SDL_GLContext sdl_gl_context;
-  
-  Nil::Node window_node;
-  
-  // Input State
-  
-  int32_t mouse_delta[2];
-  int32_t mouse[2];
-  
-  // Debug UI
-  
-  #ifdef IMGUI_DEVELOPER_SUPPORT
-  bool sdl_show_info;
-  bool sdl_show_raw_input;
-  bool sdl_show_settings;
-  #endif
-};
-
-
-// ------------------------------------------------- [ SDL Aspect Interface ] --
-
-
-void
-start_up(Nil::Engine &engine, Nil::Aspect &aspect);
-
-
-void
-events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list);
-
-
-void
-early_think(Nil::Engine &engine, Nil::Aspect &aspect);
-
-
-void
-late_think(Nil::Engine &engine, Nil::Aspect &aspect);
-
-
-} // ns
-} // ns
-
-
-#endif // inc guard 
-
-/*
-  Implimentation.
-*/
-#ifdef SDL_ASPECT_IMPL
-
-#ifndef SDL_ASPECT_IMPL_5D76166D_3BF0_4692_B623_E8DFA5EB8599
-#define SDL_ASPECT_IMPL_5D76166D_3BF0_4692_B623_E8DFA5EB8599
-
-
+#include <aspect/sdl_aspect.hpp>
 #include <nil/node.hpp>
 #include <nil/node_event.hpp>
 #include <nil/data/data.hpp>
@@ -129,12 +44,18 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
   
+  Nil::Node_controller mouse_input(Nil::Data::get_type_id(Nil::Data::Mouse{}));
+  self->mouse_input_nodes = static_cast<Nil::Node_controller&&>(mouse_input);
+  
   self->sdl_window = nullptr;
   self->sdl_gl_context = nullptr;
   self->window_node = Nil::Node(nullptr);
   
   aspect.data_types = 0;
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Window{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Mouse{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Keyboard{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Gamepad{});
   
   #ifdef IMGUI_DEVELOPER_SUPPORT
   self->sdl_show_info = false;
@@ -154,7 +75,7 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
 
   while(event_list.get(evt))
   {
-    const Nil::Node node = Nil::Event::node(evt);
+    Nil::Node node = Nil::Event::node(evt);
   
     if(Nil::Data::has_window(node))
     {
@@ -170,7 +91,33 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
         LOG_ERROR("SDL Aspect only supports one node with a window.")
       }
     }
+    
+    if(Nil::Data::has_keyboard(node))
+    {
+      Nil::Data::Keyboard kb_data{};
+      Nil::Data::get(node, kb_data);
+      
+      kb_data.key_state = (uintptr_t)self->keys;
+      kb_data.key_count = Nil::Data::KeyCode::COUNT;
+      
+      Nil::Data::set(node, kb_data);
+    }
+    
+    if(Nil::Data::has_mouse(node))
+    {
+      Nil::Data::Mouse mouse{};
+      Nil::Data::get(node, mouse);
+      
+      if(self->mouse_captured != mouse.capture)
+      {
+        self->mouse_captured = mouse.capture;
+      
+        SDL_SetRelativeMouseMode(mouse.capture ? SDL_TRUE : SDL_FALSE);
+      }
+    }
   }
+  
+  self->mouse_input_nodes.process(event_list);
 }
 
 
@@ -265,7 +212,41 @@ sdl_aspect_debug_window(uintptr_t user_data)
     
     if(ImGui::CollapsingHeader("Keyboard"))
     {
+      ImGui::BeginChild("keyboard_info", ImVec2(0, 80), false);
       
+      ImGui::BeginChild("keyboard_data_names", ImVec2(50, 0), false);
+      
+      ImGui::Spacing();
+      ImGui::Spacing();
+      ImGui::Text("Key:");
+      ImGui::Text("Status:");
+      
+      ImGui::EndChild();
+      
+      ImGui::SameLine();
+      
+      ImGui::BeginChild("scrolling_keys", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    
+      const size_t key_count = Nil::Data::KeyCode::COUNT;
+      
+      for(size_t i = 0; i < key_count; ++i)
+      {
+        char key_data[16];
+        memset(key_data, 0, sizeof(key_data));
+        sprintf(key_data, "key_state##%zu", i);
+        
+        ImGui::BeginChild(key_data, ImVec2(50,0), true);
+        
+        ImGui::Text("%s", Nil::Data::keycode_to_string(i));
+        ImGui::Text("%d", self->keys[i]);
+        
+        ImGui::EndChild();
+        
+        ImGui::SameLine();
+      }
+    
+      ImGui::EndChild();
+      ImGui::EndChild();
     }
     
     if(ImGui::CollapsingHeader("Mouse"))
@@ -336,7 +317,6 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         
         SDL_DisplayMode display;
         SDL_GetCurrentDisplayMode(display_startup, &display);
-        
        
         // If size == 0 we use 2/3rds of the screen.
         {
@@ -451,7 +431,133 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       SDL_SetWindowFullscreen(self->sdl_window, window_data.fullscreen ? fullscreen_mode : 0);
     }
   }
+  
+  // Update nodes
+  /*
+    Timing bug here, if you try setting capture before this aspect, it gets overwritten
+    We need to do something about this or we shall get more of these timing things.
+  */
+  {
+    LOG_TODO_ONCE("Data last set thing");
+  
+    Nil::Node_list input_nodes = self->mouse_input_nodes.all();
+  
+    for(Nil::Node &node : input_nodes)
+    {
+      if(Nil::Data::has_mouse(node))
+      {
+        Nil::Data::Mouse data;
+        Nil::Data::get(node, data);
+        
+        data.delta[0] = self->mouse_delta[0];
+        data.delta[1] = self->mouse_delta[1];
+        
+        data.position[0] = self->mouse[0];
+        data.position[1] = self->mouse[1];
+        
+        data.capture = self->mouse_captured;
+        
+        Nil::Data::set(node, data);
+      }
+    }
+  }  
 }
+
+
+namespace {
+
+
+size_t
+sdl_key_to_nil(const size_t sdl_key)
+{
+  switch(sdl_key)
+  {
+    // Alpha
+    case(SDL_SCANCODE_A): return Nil::Data::KeyCode::A;
+    case(SDL_SCANCODE_B): return Nil::Data::KeyCode::B;
+    case(SDL_SCANCODE_C): return Nil::Data::KeyCode::C;
+    case(SDL_SCANCODE_D): return Nil::Data::KeyCode::D;
+    case(SDL_SCANCODE_E): return Nil::Data::KeyCode::E;
+    case(SDL_SCANCODE_F): return Nil::Data::KeyCode::F;
+    case(SDL_SCANCODE_G): return Nil::Data::KeyCode::G;
+    case(SDL_SCANCODE_H): return Nil::Data::KeyCode::H;
+    case(SDL_SCANCODE_I): return Nil::Data::KeyCode::I;
+    case(SDL_SCANCODE_J): return Nil::Data::KeyCode::J;
+    case(SDL_SCANCODE_K): return Nil::Data::KeyCode::K;
+    case(SDL_SCANCODE_L): return Nil::Data::KeyCode::L;
+    case(SDL_SCANCODE_M): return Nil::Data::KeyCode::M;
+    case(SDL_SCANCODE_N): return Nil::Data::KeyCode::N;
+    case(SDL_SCANCODE_O): return Nil::Data::KeyCode::O;
+    case(SDL_SCANCODE_P): return Nil::Data::KeyCode::P;
+    case(SDL_SCANCODE_Q): return Nil::Data::KeyCode::Q;
+    case(SDL_SCANCODE_R): return Nil::Data::KeyCode::R;
+    case(SDL_SCANCODE_S): return Nil::Data::KeyCode::S;
+    case(SDL_SCANCODE_T): return Nil::Data::KeyCode::T;
+    case(SDL_SCANCODE_U): return Nil::Data::KeyCode::U;
+    case(SDL_SCANCODE_V): return Nil::Data::KeyCode::V;
+    case(SDL_SCANCODE_W): return Nil::Data::KeyCode::W;
+    case(SDL_SCANCODE_X): return Nil::Data::KeyCode::X;
+    case(SDL_SCANCODE_Y): return Nil::Data::KeyCode::Y;
+    case(SDL_SCANCODE_Z): return Nil::Data::KeyCode::Z;
+    
+    // Numbers
+    case(SDL_SCANCODE_0): return Nil::Data::KeyCode::ZERO;
+    case(SDL_SCANCODE_1): return Nil::Data::KeyCode::ONE;
+    case(SDL_SCANCODE_2): return Nil::Data::KeyCode::TWO;
+    case(SDL_SCANCODE_3): return Nil::Data::KeyCode::THREE;
+    case(SDL_SCANCODE_4): return Nil::Data::KeyCode::FOUR;
+    case(SDL_SCANCODE_5): return Nil::Data::KeyCode::FIVE;
+    case(SDL_SCANCODE_6): return Nil::Data::KeyCode::SIX;
+    case(SDL_SCANCODE_7): return Nil::Data::KeyCode::SEVEN;
+    case(SDL_SCANCODE_8): return Nil::Data::KeyCode::EIGHT;
+    case(SDL_SCANCODE_9): return Nil::Data::KeyCode::NINE;
+    
+    // Arrows
+    case(SDL_SCANCODE_UP):    return Nil::Data::KeyCode::UP;
+    case(SDL_SCANCODE_DOWN):  return Nil::Data::KeyCode::DOWN;
+    case(SDL_SCANCODE_LEFT):  return Nil::Data::KeyCode::LEFT;
+    case(SDL_SCANCODE_RIGHT): return Nil::Data::KeyCode::RIGHT;
+    
+    // Function Keys
+    case(SDL_SCANCODE_F1):  return Nil::Data::KeyCode::F1;
+    case(SDL_SCANCODE_F2):  return Nil::Data::KeyCode::F2;
+    case(SDL_SCANCODE_F3):  return Nil::Data::KeyCode::F3;
+    case(SDL_SCANCODE_F4):  return Nil::Data::KeyCode::F4;
+    case(SDL_SCANCODE_F5):  return Nil::Data::KeyCode::F5;
+    case(SDL_SCANCODE_F6):  return Nil::Data::KeyCode::F6;
+    case(SDL_SCANCODE_F7):  return Nil::Data::KeyCode::F7;
+    case(SDL_SCANCODE_F8):  return Nil::Data::KeyCode::F8;
+    case(SDL_SCANCODE_F9):  return Nil::Data::KeyCode::F9;
+    case(SDL_SCANCODE_F10): return Nil::Data::KeyCode::F10;
+    case(SDL_SCANCODE_F11): return Nil::Data::KeyCode::F11;
+    case(SDL_SCANCODE_F12): return Nil::Data::KeyCode::F12;
+    case(SDL_SCANCODE_F13): return Nil::Data::KeyCode::F13;
+    case(SDL_SCANCODE_F14): return Nil::Data::KeyCode::F14;
+    case(SDL_SCANCODE_F15): return Nil::Data::KeyCode::F15;
+    case(SDL_SCANCODE_F16): return Nil::Data::KeyCode::F16;
+    case(SDL_SCANCODE_F17): return Nil::Data::KeyCode::F17;
+    case(SDL_SCANCODE_F18): return Nil::Data::KeyCode::F18;
+    case(SDL_SCANCODE_F19): return Nil::Data::KeyCode::F19;
+    
+    // Modifiers
+    case(SDL_SCANCODE_LSHIFT):   return Nil::Data::KeyCode::L_SHIFT;
+    case(SDL_SCANCODE_RSHIFT):   return Nil::Data::KeyCode::R_SHIFT;
+    case(SDL_SCANCODE_LCTRL):    return Nil::Data::KeyCode::L_CTRL;
+    case(SDL_SCANCODE_RCTRL):    return Nil::Data::KeyCode::R_CTRL;
+    case(SDL_SCANCODE_CAPSLOCK): return Nil::Data::KeyCode::CAPS_LOCK;
+    
+    // Other
+    case(SDL_SCANCODE_SPACE):    return Nil::Data::KeyCode::SPACE;
+    case(SDL_SCANCODE_KP_ENTER): return Nil::Data::KeyCode::ENTER;
+    case(SDL_SCANCODE_RETURN):   return Nil::Data::KeyCode::RETURN;
+    case(SDL_SCANCODE_RETURN2):  return Nil::Data::KeyCode::RETURN;
+    case(SDL_SCANCODE_ESCAPE):   return Nil::Data::KeyCode::ESCAPE;
+    
+    
+    default: return -1;
+  }
+}
+} // anon ns
 
 
 void
@@ -463,6 +569,21 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
   // Reset Input
   {
     memset(self->mouse_delta, 0, sizeof(Nil_ext::SDL_Aspect::Data::mouse));
+  }
+  
+  // Update keyboard
+  {
+    for(uint32_t &key : self->keys)
+    {
+      if(key == Nil::Data::KeyState::DOWN_ON_FRAME)
+      {
+        key = Nil::Data::KeyState::DOWN;
+      }
+      else if(key == Nil::Data::KeyState::UP_ON_FRAME)
+      {
+        key = Nil::Data::KeyState::UP;
+      }
+    }
   }
 
   if(self->sdl_window)
@@ -619,32 +740,36 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
             }
             
             break;
-  //        } // SDL_MOUSEBUTTONUP
+          } // SDL_MOUSEBUTTONUP
           
-  //        case(SDL_KEYDOWN):
-  //        {
-  //          for(auto &keycode : keycodes)
-  //          {
-  //            if(keycode.sdl_key == evt.key.keysym.scancode)
-  //            {
-  //  //            input::detail::key_set(keycode.core_key, button_state::down_on_frame);
-  //            }
-  //          }
-  //        
-  //          break;
-  //        } // SDL_KEYDOWN
-  //        
-  //        case(SDL_KEYUP):
-  //        {
-  //          for(auto &keycode : keycodes)
-  //          {
-  //            if(keycode.sdl_key == evt.key.keysym.scancode)
-  //            {
-  //  //            input::detail::key_set(keycode.core_key, button_state::up_on_frame);
-  //            }
-  //          }
+          case(SDL_KEYDOWN):
+          {
+            if(evt.key.repeat == 0)
+            {
+              const size_t nil_key = sdl_key_to_nil(evt.key.keysym.scancode);
+              
+              if(nil_key < Nil::Data::KeyCode::COUNT)
+              {
+                self->keys[nil_key] = Nil::Data::KeyState::DOWN_ON_FRAME;
+              }
+            }
           
-  //          break;
+            break;
+          } // SDL_KEYDOWN
+          
+          case(SDL_KEYUP):
+          {
+            if(evt.key.repeat == 0)
+            {
+              const size_t nil_key = sdl_key_to_nil(evt.key.keysym.scancode);
+              
+              if(nil_key < Nil::Data::KeyCode::COUNT)
+              {
+                self->keys[nil_key] = Nil::Data::KeyState::UP_ON_FRAME;
+              }
+            }
+          
+            break;
           } // SDL_KEYUP
           
         }
@@ -656,7 +781,3 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
 
 } // ns
 } // ns
-
-
-#endif // impl guard
-#endif // impl request

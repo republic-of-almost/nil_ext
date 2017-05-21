@@ -1,20 +1,16 @@
-#include "aspects.hpp"
+#include <aspect/aspects.hpp>
 
 
 #define IMGUI_DEVELOPER_SUPPORT
 //#define IMGIZMO_DEVELOPER_SUPPORT
 
-#define SDL_ASPECT_IMPL
-#include <sdl_aspect.hpp>
+#include <nil/aspect.hpp>
+#include <nil/nil.hpp>
 
-#define IMGUI_ASPECT_IMPL
-#include <imgui_aspect.hpp>
-
-#define RENDERER_ASPECT_IMPL
-#include <renderer_aspect.hpp>
-
-#define LOGIC_ASPECT_IMPL
-#include <logic_aspect.hpp>
+#include <aspect/sdl_aspect.hpp>
+#include <aspect/imgui_aspect.hpp>
+#include <aspect/renderer_aspect.hpp>
+#include <aspect/logic_aspect.hpp>
 
 #include <assert.h>
 #include <stddef.h>
