@@ -23,6 +23,10 @@ table.insert(
       make.get_proj_root() .. "src/",
     },
 
+    preprocessor = {
+      "IMGUI_DEVELOPER_SUPPORT",
+    },
+
     project_dependencies = {
       "Nil",
       "Utilities",
