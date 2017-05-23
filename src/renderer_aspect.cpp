@@ -668,6 +668,10 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           rov_setColor(data[index + 6], data[index + 7], data[index + 8], 1.f);
           rov_submitLine(&data[index + 0], &data[index + 3]);
         }
+        
+        // Signal to line renderer not reset the data buffer.
+        line_data.aux_02 = 0;
+        Nil::Data::set(self->debug_lines, line_data);
       }
     }
         
