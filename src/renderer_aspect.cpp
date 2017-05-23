@@ -206,6 +206,7 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Graphics{});
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Mesh_resource{});
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Window{});
+  aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Developer{});
   
   
   #ifdef IMGUI_DEVELOPER_SUPPORT
@@ -274,6 +275,17 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
     if(Nil::Data::has_mesh_resource(node))
     {
       self->pending_mesh_load.emplace_back(node);
+    }
+    
+    if(Nil::Data::has_developer(node))
+    {
+      Nil::Data::Developer data{};
+      Nil::Data::get(node, data);
+      
+      if(data.type_id == 2)
+      {
+        self->debug_lines = node;
+      }
     }
   }
 
@@ -633,6 +645,28 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           rov_setMesh(self->external_mesh_ids[render.mesh_id]);
 
           rov_submitMeshTransform(math::mat4_get_data(render.world));
+        }
+      }
+      
+      // debug_lines
+      if(self->debug_lines)
+      {
+        Nil::Data::Developer line_data{};
+        Nil::Data::get(self->debug_lines, line_data);
+        
+        const float *data = (float*)line_data.aux_01;
+        const size_t count = (size_t)line_data.aux_02;
+        
+        LIB_ASSERT(count % 9 == 0);
+        
+        const size_t lines = count / 9;
+        
+        for(size_t i = 0; i < lines; ++i)
+        {
+          const size_t index = i * 9;
+          
+          rov_setColor(data[index + 6], data[index + 7], data[index + 8], 1.f);
+          rov_submitLine(&data[index + 0], &data[index + 3]);
         }
       }
     }

@@ -36,6 +36,9 @@ struct Data
   std::vector<uint32_t> internal_mesh_ids;
   std::vector<Nil::Node> pending_mesh_load;
   
+  
+  Nil::Node debug_lines = Nil::Node(nullptr);
+  
   // Camera //
   
   struct ROV_Camera

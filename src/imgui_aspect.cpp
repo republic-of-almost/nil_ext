@@ -58,25 +58,28 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
         Nil::Data::Developer data{};
         Nil::Data::get(evt_node, data);
         
-        bool exists = false;
-        
-        for(size_t i = 0; i < self->dev_nodes.size(); ++i)
+        if(data.type_id == 1)
         {
-          const Nil::Node &node = self->dev_nodes[i];
-        
-          if(node.get_id() == evt.node_id)
-          {
-            exists = true;
-            self->dev_data[i] = data;
-          }
-        }
-        
-        if(!exists)
-        {
-          self->dev_nodes.emplace_back(evt_node);
-          self->dev_data.emplace_back(data);
+          bool exists = false;
           
-          LIB_ASSERT(self->dev_nodes.size() == self->dev_data.size());
+          for(size_t i = 0; i < self->dev_nodes.size(); ++i)
+          {
+            const Nil::Node &node = self->dev_nodes[i];
+          
+            if(node.get_id() == evt.node_id)
+            {
+              exists = true;
+              self->dev_data[i] = data;
+            }
+          }
+          
+          if(!exists)
+          {
+            self->dev_nodes.emplace_back(evt_node);
+            self->dev_data.emplace_back(data);
+            
+            LIB_ASSERT(self->dev_nodes.size() == self->dev_data.size());
+          }
         }
       }
     } // if add / update
