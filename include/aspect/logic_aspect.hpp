@@ -17,15 +17,11 @@ public:
   explicit Logic() {}
   virtual ~Logic() {}
 
-  virtual void on_start() {}
-  
+  virtual void on_start()                     {}
   virtual void on_early_think(const float dt) {}
-  virtual void on_think(const float dt) {}
-  virtual void on_late_think(const float dt) {}
-  
-  virtual void on_end() {}
-
-
+  virtual void on_think(const float dt)       {}
+  virtual void on_late_think(const float dt)  {}
+  virtual void on_end()                       {}
 };
 
 
