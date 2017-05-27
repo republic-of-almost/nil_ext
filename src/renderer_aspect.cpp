@@ -295,115 +295,159 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
 
+
   /*
-    Rebuild the cameras based on the viewport.
-    This is alittle hack atm.
+    Remove data first
   */
-  for(uint32_t i = 0; i < self->camera_node_ids.size(); ++i)
   {
-    Nil::Node node(self->camera_node_ids[i]);
-  
-    Nil::Data::Transform trans{};
-    Nil::Data::get(node, trans, true);
+    Nil::Node_list remove_renderables = self->renderable_nodes.removed();
     
-    Nil::Data::Camera cam_data{};
-    Nil::Data::get(node, cam_data);
-  
-    uint32_t clear_flags = 0;
-    
-    if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
-    if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
-
-    const Data::ROV_Camera rov_camera
+    for(auto &node : remove_renderables)
     {
-      math::mat4_lookat_from_nil_transform(trans),
-      math::mat4_projection_from_nil_camera(cam_data, self->current_viewport),
-      clear_flags
-    };
-    
-    self->rov_camera[i] = rov_camera;
-  }
-  
-
-//  if(self->has_initialized && self->process_pending)
-  {
-    /*
-      Remove data first
-    */
-    {
-      Nil::Node_list remove_renderables = self->renderable_nodes.removed();
-      
-      for(auto &node : remove_renderables)
+      for(size_t i = 0; i < self->renderable_node_ids.size(); ++i)
       {
-        for(size_t i = 0; i < self->renderable_node_ids.size(); ++i)
+        if(node.get_id() == self->renderable_node_ids[i])
         {
-          if(node.get_id() == self->renderable_node_ids[i])
-          {
-            self->renderable_node_ids.erase(self->renderable_node_ids.begin() + i);
-            self->renderables.erase(self->renderables.begin() + i);
-            break;
-          }
-        }
-      }
-      
-      Nil::Node_list pending_camera_removals = self->camera_nodes.removed();
-      
-      for(auto &node : pending_camera_removals)
-      {
-        for(size_t i = 0; i < self->camera_node_ids.size(); ++i)
-        {
-          if(node.get_id() == self->camera_node_ids[i])
-          {
-            self->camera_node_ids.erase(self->camera_node_ids.begin() + i);
-            self->rov_camera.erase(self->rov_camera.begin() + i);
-          }
+          self->renderable_node_ids.erase(self->renderable_node_ids.begin() + i);
+          self->renderables.erase(self->renderables.begin() + i);
+          break;
         }
       }
     }
     
-    /*
-      Update or insert new data
-    */
-    {
-      Nil::Node_list update_renderers = self->renderable_nodes.updated_and_added();	
+    Nil::Node_list pending_camera_removals = self->camera_nodes.removed();
     
-      for(auto &node : update_renderers)
+    for(auto &node : pending_camera_removals)
+    {
+      for(size_t i = 0; i < self->camera_node_ids.size(); ++i)
+      {
+        if(node.get_id() == self->camera_node_ids[i])
+        {
+          self->camera_node_ids.erase(self->camera_node_ids.begin() + i);
+          self->rov_camera.erase(self->rov_camera.begin() + i);
+        }
+      }
+    }
+  }
+  
+  /*
+    Update or insert new data
+  */
+  {
+    Nil::Node_list update_renderers = self->renderable_nodes.updated_and_added();	
+  
+    for(auto &node : update_renderers)
+    {
+      Nil::Data::Transform trans{};
+      Nil::Data::get(node, trans, true);
+    
+      Nil::Data::Material mat{};
+      Nil::Data::get(node, mat);
+      
+      
+      Nil::Data::Mesh mesh{};
+      
+      if(Nil::Data::has_mesh(node))
+      {
+        Nil::Data::get(node, mesh);
+      }
+    
+      // ROV Mesh
+      const uint32_t rov_mesh = mesh.mesh_id;
+      
+      Data::ROV_Renderable rov_render
+      {
+        (uint8_t)mat.shader,
+        math::mat4_from_nil_transform(trans),
+        rov_mesh,
+      };
+      
+      memcpy(rov_render.color, mat.color, sizeof(Nil::Data::Material::color));
+      /*
+        Check to see if we have it already.
+      */
+      bool insert_new_data = true;
+      
+      for(size_t j = 0; j < self->renderable_node_ids.size(); ++j)
+      {
+        if(self->renderable_node_ids[j] == node.get_id())
+        {
+          self->renderables[j] = rov_render;
+          insert_new_data = false;
+          break;
+        }
+      }
+      
+      if(insert_new_data)
+      {
+        self->renderable_node_ids.emplace_back(node.get_id());
+        self->renderables.emplace_back(rov_render);
+      }
+    }
+    
+    
+    /*
+      Rebuild the cameras based on the viewport.
+      This is alittle hack atm.
+    */
+    for(uint32_t i = 0; i < self->camera_node_ids.size(); ++i)
+    {
+      Nil::Node node(self->camera_node_ids[i]);
+      LIB_ASSERT(node.is_valid());
+    
+      Nil::Data::Transform trans{};
+      Nil::Data::get(node, trans, true);
+      
+      Nil::Data::Camera cam_data{};
+      Nil::Data::get(node, cam_data);
+    
+      uint32_t clear_flags = 0;
+      
+      if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
+      if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
+
+      const Data::ROV_Camera rov_camera
+      {
+        math::mat4_lookat_from_nil_transform(trans),
+        math::mat4_projection_from_nil_camera(cam_data, self->current_viewport),
+        clear_flags
+      };
+      
+      self->rov_camera[i] = rov_camera;
+    }
+    
+    {
+      Nil::Node_list update_cameras = self->camera_nodes.updated_and_added();
+    
+      for(auto &node : update_cameras)
       {
         Nil::Data::Transform trans{};
         Nil::Data::get(node, trans, true);
+        
+        Nil::Data::Camera cam_data{};
+        Nil::Data::get(node, cam_data);
       
-        Nil::Data::Material mat{};
-        Nil::Data::get(node, mat);
-        
-        
-        Nil::Data::Mesh mesh{};
-        
-        if(Nil::Data::has_mesh(node))
+        uint32_t clear_flags = 0;
+        if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
+        if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
+
+        const Data::ROV_Camera rov_camera
         {
-          Nil::Data::get(node, mesh);
-        }
-      
-        // ROV Mesh
-        const uint32_t rov_mesh = mesh.mesh_id;
-        
-        Data::ROV_Renderable rov_render
-        {
-          (uint8_t)mat.shader,
-          math::mat4_from_nil_transform(trans),
-          rov_mesh,
+          math::mat4_lookat_from_nil_transform(trans),
+          math::mat4_projection_from_nil_camera(cam_data, self->current_viewport),
+          clear_flags
         };
         
-        memcpy(rov_render.color, mat.color, sizeof(Nil::Data::Material::color));
         /*
           Check to see if we have it already.
         */
         bool insert_new_data = true;
         
-        for(size_t j = 0; j < self->renderable_node_ids.size(); ++j)
+        for(size_t j = 0; j < self->camera_node_ids.size(); ++j)
         {
-          if(self->renderable_node_ids[j] == node.get_id())
+          if(self->camera_node_ids[j] == node.get_id())
           {
-            self->renderables[j] = rov_render;
+            self->rov_camera[j] = rov_camera;
             insert_new_data = false;
             break;
           }
@@ -411,82 +455,36 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         
         if(insert_new_data)
         {
-          self->renderable_node_ids.emplace_back(node.get_id());
-          self->renderables.emplace_back(rov_render);
+          self->camera_node_ids.emplace_back(node.get_id());
+          self->rov_camera.emplace_back(rov_camera);
         }
       }
       
-      
-      {
-        Nil::Node_list update_cameras = self->camera_nodes.updated_and_added();
-      
-        for(auto &node : update_cameras)
-        {
-          Nil::Data::Transform trans{};
-          Nil::Data::get(node, trans, true);
-          
-          Nil::Data::Camera cam_data{};
-          Nil::Data::get(node, cam_data);
-        
-          uint32_t clear_flags = 0;
-          if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
-          if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
-
-          const Data::ROV_Camera rov_camera
-          {
-            math::mat4_lookat_from_nil_transform(trans),
-            math::mat4_projection_from_nil_camera(cam_data, self->current_viewport),
-            clear_flags
-          };
-          
-          /*
-            Check to see if we have it already.
-          */
-          bool insert_new_data = true;
-          
-          for(size_t j = 0; j < self->camera_node_ids.size(); ++j)
-          {
-            if(self->camera_node_ids[j] == node.get_id())
-            {
-              self->rov_camera[j] = rov_camera;
-              insert_new_data = false;
-              break;
-            }
-          }
-          
-          if(insert_new_data)
-          {
-            self->camera_node_ids.emplace_back(node.get_id());
-            self->rov_camera.emplace_back(rov_camera);
-          }
-        }
-        
 //        self->pending_renderable_node_updates.clear();
 //        self->pending_camera_node_updates.clear();
-      } // Update or insert data
-    }
-    
-    /*
-      Resources
-    */
+    } // Update or insert data
+  }
+  
+  /*
+    Resources
+  */
+  {
+    for(auto &node : self->pending_mesh_load)
     {
-      for(auto &node : self->pending_mesh_load)
+      Nil::Data::Mesh_resource mesh_resource{};
+      Nil::Data::get(node, mesh_resource);
+      
+      if(mesh_resource.status == 0)
       {
-        Nil::Data::Mesh_resource mesh_resource{};
-        Nil::Data::get(node, mesh_resource);
+        const uint32_t mesh = rov_createMesh(mesh_resource.position_vec3, mesh_resource.normal_vec3, mesh_resource.texture_coords_vec2, mesh_resource.count);
+        self->internal_mesh_ids.emplace_back(mesh);
+        self->external_mesh_ids.emplace_back(mesh_resource.id);
         
-        if(mesh_resource.status == 0)
-        {
-          const uint32_t mesh = rov_createMesh(mesh_resource.position_vec3, mesh_resource.normal_vec3, mesh_resource.texture_coords_vec2, mesh_resource.count);
-          self->internal_mesh_ids.emplace_back(mesh);
-          self->external_mesh_ids.emplace_back(mesh_resource.id);
-          
-          mesh_resource.status = 1;
-          Nil::Data::set(node, mesh_resource);
-        }
+        mesh_resource.status = 1;
+        Nil::Data::set(node, mesh_resource);
       }
     }
-  } // Has inited and process
+  }
 }
 
 
