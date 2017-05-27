@@ -255,11 +255,6 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
       
       self->current_viewport[0] = win.width;
       self->current_viewport[1] = win.height;
-      
-//      for(auto cam : self->camera_nodes)
-      {
-//        self->pending_camera_node_updates.emplace_back(cam);
-      }
     }
     
     if(Nil::Data::has_graphics(node))
@@ -288,74 +283,6 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
       }
     }
   }
-
-//  Nil::Event_data evt;
-
-//  while(event_list.get(evt))
-//  {
-//    const Nil::Node &node = Nil::Node(evt.node_id);
-//    
-//    /*
-//      We add all nodes to the pending and deal with later.
-//    */
-//    if(!Nil::Event::node_removed(evt))
-//    {
-//      if(Nil::Data::has_mesh_resource(node))
-//      {
-//        self->pending_mesh_load.emplace_back(node);
-//      }
-//      
-//      if(Nil::Data::has_camera(node))
-//      {
-//        self->pending_camera_node_updates.emplace_back(node);
-//      }
-//      
-//      if(Nil::Data::has_material(node))
-//      {
-//        self->pending_renderable_node_updates.emplace_back(node);
-//      }
-//      
-//      /*
-//        Viewport changes mean we need to regenerate projection mats
-//        so we just regenerate all the cameras.
-//      */
-//      if(Nil::Data::has_window(node))
-//      {
-//        Nil::Data::Window win{};
-//        Nil::Data::get(node, win);
-//        
-//        self->current_viewport[0] = win.width;
-//        self->current_viewport[1] = win.height;
-//        
-//        for(auto cam : self->camera_nodes)
-//        {
-//          self->pending_camera_node_updates.emplace_back(cam);
-//        }
-//      }
-//      
-//      if(Nil::Data::has_graphics(node))
-//      {
-//        if(!self->has_initialized)
-//        {
-//          rov_initialize();
-//        }
-//      
-//        self->has_initialized = true;
-//      }
-//    }
-//    else
-//    {
-//      if(Nil::Data::has_camera(node))
-//      {
-//        self->pending_camera_node_removals.emplace_back(node);
-//      }
-//      
-//      if(Nil::Data::has_material(node))
-//      {
-//        self->pending_renderable_node_removals.emplace_back(node);
-//      }
-//    }
-//  }
 }
 
 
@@ -432,42 +359,13 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
         }
       }
-    
-//      for(size_t i = 0; i < self->pending_renderable_node_removals.size(); ++i)
-//      {
-//        for(size_t j = 0; j < self->renderable_nodes.size(); ++j)
-//        {
-//          if(self->renderable_nodes[j] == self->pending_renderable_node_removals[i])
-//          {
-//            self->renderable_nodes.erase(self->renderable_nodes.begin() + j);
-//            self->renderables.erase(self->renderables.begin() + j);
-//            break;
-//          }
-//        }
-//      }
-//      
-//      for(size_t i = 0; i < self->pending_camera_node_removals.size(); ++i)
-//      {
-//        for(size_t j = 0; j < self->camera_nodes.size(); ++j)
-//        {
-//          if(self->camera_nodes[j] == self->pending_camera_node_removals[i])
-//          {
-//            self->camera_nodes.erase(self->camera_nodes.begin() + j);
-//            self->rov_camera.erase(self->rov_camera.begin() + j);
-//            break;
-//          }
-//        }
-//      }
-//      
-//      self->pending_renderable_node_removals.clear();
-//      self->pending_camera_node_removals.clear();
     }
     
     /*
       Update or insert new data
     */
     {
-      Nil::Node_list update_renderers = self->renderable_nodes.updated_and_added();
+      Nil::Node_list update_renderers = self->renderable_nodes.updated_and_added();	
     
       for(auto &node : update_renderers)
       {
@@ -488,14 +386,6 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         // ROV Mesh
         const uint32_t rov_mesh = mesh.mesh_id;
         
-//        for(size_t i = 0; i < self->external_mesh_ids.size(); ++i)
-//        {
-//          if(self->external_mesh_ids[i] == mesh.mesh_id)
-//          {
-//            rov_mesh = self->internal_mesh_ids[i];
-//          }
-//        }
-      
         Data::ROV_Renderable rov_render
         {
           (uint8_t)mat.shader,

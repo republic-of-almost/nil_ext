@@ -48,10 +48,7 @@ struct Data
     
     uint32_t clear_flags;
   };
-  
-//  std::vector<Nil::Node>  pending_camera_node_updates;
-//  std::vector<Nil::Node>  pending_camera_node_removals;
-//  std::vector<Nil::Node>  camera_nodes;
+
   std::vector<uint32_t> camera_node_ids;
   std::vector<ROV_Camera> rov_camera;
   
@@ -65,10 +62,7 @@ struct Data
     
     float color[4];
   };
-  
-//  std::vector<Nil::Node>      pending_renderable_node_updates;
-//  std::vector<Nil::Node>      pending_renderable_node_removals;
-//  std::vector<Nil::Node>      renderable_nodes;
+
   
   std::vector<uint32_t> renderable_node_ids;
   std::vector<ROV_Renderable> renderables;
