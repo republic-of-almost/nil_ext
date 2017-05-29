@@ -1,3 +1,4 @@
+#ifndef NIMGUI_ASPECT
 /*
   SDL_Asepct create a window.
   and OpenGL context.
@@ -38,7 +39,7 @@ struct Data
   bool show_data;
   bool show_node_events;
   bool show_menu;
-  
+
   std::vector<Nil::Node> dev_nodes;
   std::vector<Nil::Data::Developer> dev_data;
 };
@@ -64,3 +65,5 @@ think(Nil::Engine &engine, Nil::Aspect &aspect);
 
 
 #endif // inc guard
+
+#endif // #ifndef IMGUI_ASPECT

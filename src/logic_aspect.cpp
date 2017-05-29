@@ -14,18 +14,19 @@
 namespace {
 
 
+#ifndef NIMGUI_ASPECT
 inline void
 logic_aspect_debug_menu(uintptr_t user_data)
 {
   Nil_ext::ROV_Aspect::Data *self(
     reinterpret_cast<Nil_ext::ROV_Aspect::Data*>(user_data)
   );
-  
+
   if(ImGui::BeginMenu("Logic"))
   {
     ImGui::EndMenu();
   }
-  
+
   LIB_ASSERT(self);
 }
 
@@ -38,7 +39,7 @@ logic_aspect_debug_window(uintptr_t user_data)
   );
   LIB_ASSERT(self);
 }
-
+#endif
 
 } // anon ns
 #endif
@@ -68,7 +69,7 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   dev.type_id = 1;
   dev.aux_01 = (uintptr_t)logic_aspect_debug_menu;
   dev.aux_02 = (uintptr_t)self;
-  
+
   dev.aux_03 = (uintptr_t)logic_aspect_debug_window;
   dev.aux_04 = (uintptr_t)self;
 
@@ -91,18 +92,18 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
   while(event_list.get(evt))
   {
     Nil::Node node(evt.node_id);
-  
+
     if(Nil::Event::node_added(evt))
     {
       if(Nil::Data::has_logic(node))
       {
         Nil::Data::Logic data{};
         Nil::Data::get(node, data);
-        
+
         if(data.logic_id == 1)
         {
           bool exists = false;
-        
+
           for(auto n : self->logic_nodes)
           {
             if(n == node)
@@ -110,7 +111,7 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
               exists = true;
             }
           }
-          
+
           if(!exists)
           {
             self->logic_nodes.emplace_back(node);
@@ -123,8 +124,8 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
     else if(Nil::Event::node_removed(evt))
     {
     }
-  
-    
+
+
   } // while event list
 }
 
@@ -137,7 +138,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
-  
+
   for(auto &log : self->logic)
   {
     log->on_early_think(0.16f);
@@ -153,7 +154,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
-  
+
   for(auto &log : self->logic)
   {
     log->on_think(0.16f);
