@@ -297,7 +297,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       {
         #ifdef __APPLE__
         // https://forums.libsdl.org/viewtopic.php?p=51127&sid=570a47d0f562cc0b1d4c91b7712c663f
-        SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, "1");
+//        SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, "1");
         #endif
       }
 
@@ -587,215 +587,210 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
 
-  // Reset Input
-  {
-    memset(self->mouse_delta, 0, sizeof(Nil_ext::SDL_Aspect::Data::mouse));
-  }
-
-  // Update keyboard
-  {
-    for(uint32_t &key : self->keys)
-    {
-      if(key == Nil::Data::KeyState::DOWN_ON_FRAME)
-      {
-        key = Nil::Data::KeyState::DOWN;
-      }
-      else if(key == Nil::Data::KeyState::UP_ON_FRAME)
-      {
-        key = Nil::Data::KeyState::UP;
-      }
-    }
-  }
-
   if(self->sdl_window)
   {
-    // Flip Buffers
+
+    // Reset Input
+    {
+      memset(self->mouse_delta, 0, sizeof(Nil_ext::SDL_Aspect::Data::mouse));
+    }
+
+    // Update keyboard
+    {
+      for(uint32_t &key : self->keys)
+      {
+        if(key == Nil::Data::KeyState::DOWN_ON_FRAME)
+        {
+          key = Nil::Data::KeyState::DOWN;
+        }
+        else if(key == Nil::Data::KeyState::UP_ON_FRAME)
+        {
+          key = Nil::Data::KeyState::UP;
+        }
+      }
+    }
+    
+        // Flip Buffers
     #ifndef NIMGUI_ASPECT
     ImGui::Render();
     #endif
     
-    SDL_GL_SwapWindow(self->sdl_window);
-
     // -- Reset ImGui -- //
     #ifndef NIMGUI_ASPECT
     ImGui_ImplSdlGL3_NewFrame(self->sdl_window);
     ImGuizmo::BeginFrame();
     #endif
 
-    // Pump the messages
-    if(self->sdl_window)
-    {
-//      SDL_PumpEvents();
+    SDL_Event evt;
     
-      SDL_Event evt;
-      
-      while (SDL_PollEvent(&evt))
+    while (SDL_PollEvent(&evt))
+    {
+      #ifndef NIMGUI_ASPECT
+      if(ImGui_ImplSdlGL3_ProcessEvent(&evt))
       {
-        #ifndef NIMGUI_ASPECT
-        if(ImGui_ImplSdlGL3_ProcessEvent(&evt))
-        {
-          // Need to figure out how to selectivly swallow events.
-          //continue;
-        }
-        #endif
+        // Need to figure out how to selectivly swallow events.
+        //continue;
+      }
+      #endif
 
-        switch(evt.type)
-        {
-          /*
-            Time to quit
-          */
-          case(SDL_QUIT):
-            aspect.want_to_quit = true;
-            break;
+      switch(evt.type)
+      {
+        /*
+          Time to quit
+        */
+        case(SDL_QUIT):
+          aspect.want_to_quit = true;
+          break;
 
-          /*
-            Window Events
-          */
-          case(SDL_WINDOWEVENT):
+        /*
+          Window Events
+        */
+        case(SDL_WINDOWEVENT):
+        {
+          switch(evt.window.event)
           {
-            switch(evt.window.event)
+            case(SDL_WINDOWEVENT_RESIZED):
             {
-              case(SDL_WINDOWEVENT_RESIZED):
-              {
-                LOG_TODO("This event could be called when transitioning to or from a retina monitor. Do I need to regenerate fbo's?");
-                break;
-              }
-              case(SDL_WINDOWEVENT_FOCUS_LOST):
-              {
-                LOG_TODO("Should button events be reset? Do We still get other events?");
-                break;
-              }
-              case(SDL_WINDOWEVENT_FOCUS_GAINED):
-              {
-                LOG_TODO("Do we need to reinitialize anything here?");
-                break;
-              }
+              LOG_TODO("This event could be called when transitioning to or from a retina monitor. Do I need to regenerate fbo's?");
+              break;
             }
-            break;
+            case(SDL_WINDOWEVENT_FOCUS_LOST):
+            {
+              LOG_TODO("Should button events be reset? Do We still get other events?");
+              break;
+            }
+            case(SDL_WINDOWEVENT_FOCUS_GAINED):
+            {
+              LOG_TODO("Do we need to reinitialize anything here?");
+              break;
+            }
+          }
+          break;
+        }
+
+        /*
+          Input Mouse Events
+        */
+        case(SDL_MOUSEMOTION):
+        {
+          const Uint32 mouse_id = evt.motion.which;
+
+          if(mouse_id == 0)
+          {
+            self->mouse[0] = evt.motion.x;
+            self->mouse[1] = evt.motion.y;
+            self->mouse_delta[0] = evt.motion.xrel;
+            self->mouse_delta[1] = evt.motion.yrel;
           }
 
-          /*
-            Input Mouse Events
-          */
-          case(SDL_MOUSEMOTION):
-          {
-            const Uint32 mouse_id = evt.motion.which;
+          break;
+        } // SDL_MOUSEMOTION
 
-            if(mouse_id == 0)
+        case(SDL_MOUSEWHEEL):
+        {
+          break;
+        } // SDL_MOUSEWHEEL
+
+        case(SDL_MOUSEBUTTONDOWN):
+        {
+          const uint32_t mouse_id = evt.button.which;
+
+          if(mouse_id == 0)
+          {
+            switch(evt.button.button)
             {
-              self->mouse[0] = evt.motion.x;
-              self->mouse[1] = evt.motion.y;
-              self->mouse_delta[0] = evt.motion.xrel;
-              self->mouse_delta[1] = evt.motion.yrel;
+  //            case(SDL_BUTTON_LEFT):
+  //              input::detail::mouse_set_button(core::mouse_button_id::left, button_state::down_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_MIDDLE):
+  //              input::detail::mouse_set_button(core::mouse_button_id::middle, button_state::down_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_RIGHT):
+  //              input::detail::mouse_set_button(core::mouse_button_id::right, button_state::down_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_X1):
+  //              input::detail::mouse_set_button(core::mouse_button_id::x1, button_state::down_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_X2):
+  //              input::detail::mouse_set_button(core::mouse_button_id::x2, button_state::down_on_frame);
+  //              break;
             }
+          }
 
-            break;
-          } // SDL_MOUSEMOTION
+          break;
+        } // SDL_MOUSEBUTTONDOWN
 
-          case(SDL_MOUSEWHEEL):
+        case(SDL_MOUSEBUTTONUP):
+        {
+          const uint32_t mouse_id = evt.button.which;
+
+          if(mouse_id == 0)
           {
-            break;
-          } // SDL_MOUSEWHEEL
-
-          case(SDL_MOUSEBUTTONDOWN):
-          {
-            const uint32_t mouse_id = evt.button.which;
-
-            if(mouse_id == 0)
+            switch(evt.button.button)
             {
-              switch(evt.button.button)
-              {
-    //            case(SDL_BUTTON_LEFT):
-    //              input::detail::mouse_set_button(core::mouse_button_id::left, button_state::down_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_MIDDLE):
-    //              input::detail::mouse_set_button(core::mouse_button_id::middle, button_state::down_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_RIGHT):
-    //              input::detail::mouse_set_button(core::mouse_button_id::right, button_state::down_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_X1):
-    //              input::detail::mouse_set_button(core::mouse_button_id::x1, button_state::down_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_X2):
-    //              input::detail::mouse_set_button(core::mouse_button_id::x2, button_state::down_on_frame);
-    //              break;
-              }
+  //            case(SDL_BUTTON_LEFT):
+  //              input::detail::mouse_set_button(core::mouse_button_id::left, button_state::up_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_MIDDLE):
+  //              input::detail::mouse_set_button(core::mouse_button_id::middle, button_state::up_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_RIGHT):
+  //              input::detail::mouse_set_button(core::mouse_button_id::right, button_state::up_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_X1):
+  //              input::detail::mouse_set_button(core::mouse_button_id::x1, button_state::up_on_frame);
+  //              break;
+  //
+  //            case(SDL_BUTTON_X2):
+  //              input::detail::mouse_set_button(core::mouse_button_id::x2, button_state::up_on_frame);
+  //              break;
             }
+          }
 
-            break;
-          } // SDL_MOUSEBUTTONDOWN
+          break;
+        } // SDL_MOUSEBUTTONUP
 
-          case(SDL_MOUSEBUTTONUP):
+        case(SDL_KEYDOWN):
+        {
+          if(evt.key.repeat == 0)
           {
-            const uint32_t mouse_id = evt.button.which;
+            const size_t nil_key = sdl_key_to_nil(evt.key.keysym.scancode);
 
-            if(mouse_id == 0)
+            if(nil_key < Nil::Data::KeyCode::COUNT)
             {
-              switch(evt.button.button)
-              {
-    //            case(SDL_BUTTON_LEFT):
-    //              input::detail::mouse_set_button(core::mouse_button_id::left, button_state::up_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_MIDDLE):
-    //              input::detail::mouse_set_button(core::mouse_button_id::middle, button_state::up_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_RIGHT):
-    //              input::detail::mouse_set_button(core::mouse_button_id::right, button_state::up_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_X1):
-    //              input::detail::mouse_set_button(core::mouse_button_id::x1, button_state::up_on_frame);
-    //              break;
-    //
-    //            case(SDL_BUTTON_X2):
-    //              input::detail::mouse_set_button(core::mouse_button_id::x2, button_state::up_on_frame);
-    //              break;
-              }
+              self->keys[nil_key] = Nil::Data::KeyState::DOWN_ON_FRAME;
             }
+          }
 
-            break;
-          } // SDL_MOUSEBUTTONUP
+          break;
+        } // SDL_KEYDOWN
 
-          case(SDL_KEYDOWN):
+        case(SDL_KEYUP):
+        {
+          if(evt.key.repeat == 0)
           {
-            if(evt.key.repeat == 0)
+            const size_t nil_key = sdl_key_to_nil(evt.key.keysym.scancode);
+
+            if(nil_key < Nil::Data::KeyCode::COUNT)
             {
-              const size_t nil_key = sdl_key_to_nil(evt.key.keysym.scancode);
-
-              if(nil_key < Nil::Data::KeyCode::COUNT)
-              {
-                self->keys[nil_key] = Nil::Data::KeyState::DOWN_ON_FRAME;
-              }
+              self->keys[nil_key] = Nil::Data::KeyState::UP_ON_FRAME;
             }
+          }
 
-            break;
-          } // SDL_KEYDOWN
-
-          case(SDL_KEYUP):
-          {
-            if(evt.key.repeat == 0)
-            {
-              const size_t nil_key = sdl_key_to_nil(evt.key.keysym.scancode);
-
-              if(nil_key < Nil::Data::KeyCode::COUNT)
-              {
-                self->keys[nil_key] = Nil::Data::KeyState::UP_ON_FRAME;
-              }
-            }
-
-            break;
-          } // SDL_KEYUP
-
-        }
+          break;
+        } // SDL_KEYUP
       }
     }
+    
+    
+    SDL_GL_SwapWindow(self->sdl_window);
   }
 }
 
