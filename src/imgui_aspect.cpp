@@ -641,13 +641,13 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
         };
 
         bool update_cam = false;
-        if(ImGui::Combo("Projection##Cam", (int*)&cam.type, proj, 2)) { update_cam = true; }
-        if(ImGui::DragInt("Priority##Cam",  (int*)&cam.priority))     { update_cam = true; }
-        if(ImGui::DragFloat("Width##Cam",  &cam.width, 0.01f))           { update_cam = true; }
-        if(ImGui::DragFloat("Height##Cam", &cam.height, 0.01f))          { update_cam = true; }
-        if(ImGui::DragFloat("FOV##Cam",  &cam.fov, 0.01f))                   { update_cam = true; }
-        if(ImGui::DragFloat("Near Plane##Cam",  &cam.near_plane, 0.1f))     { update_cam = true; }
-        if(ImGui::DragFloat("Far Plane##Cam",  &cam.far_plane, 0.1f))       { update_cam = true; }
+        if(ImGui::Combo("Projection##Cam", (int*)&cam.type, proj, 2))           { update_cam = true; }
+        if(ImGui::DragInt("Priority##Cam",  (int*)&cam.priority))               { update_cam = true; }
+        if(ImGui::DragFloat("Width##Cam",  &cam.width, 0.01f))                  { update_cam = true; }
+        if(ImGui::DragFloat("Height##Cam", &cam.height, 0.01f))                 { update_cam = true; }
+        if(ImGui::DragFloat("FOV##Cam",  &cam.fov, 0.01f))                      { update_cam = true; }
+        if(ImGui::DragFloat("Near Plane##Cam",  &cam.near_plane, 0.1f))         { update_cam = true; }
+        if(ImGui::DragFloat("Far Plane##Cam",  &cam.far_plane, 0.1f))           { update_cam = true; }
         if(ImGui::Checkbox("Clear Color Buffer##Cam", &cam.clear_color_buffer)) { update_cam = true; }
         if(ImGui::Checkbox("Clear Depth Buffer##Cam", &cam.clear_depth_buffer)) { update_cam = true; }
 
@@ -655,6 +655,60 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
         {
           Nil::Data::set(self->inspector_node, cam);
         }
+      }
+    }
+
+    /*
+      Audio
+    */
+    if(Nil::Data::has_audio(self->inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Audio"))
+      {
+        Nil::Data::Audio audio{};
+        Nil::Data::get(self->inspector_node, audio);
+        
+        bool update_audio = false;
+        if(ImGui::InputInt("ID##Audio", (int*)&audio.audio_id)) { update_audio = true; }
+        
+        const char *request[] {
+          "NONE",
+          "PLAY",
+          "STOP",
+        };
+        
+        if(ImGui::Combo("Request##Audio", (int*)&audio.request_state, request, sizeof(request) / sizeof(char*)))
+        {
+          update_audio = true;
+        }
+        
+        const char *state[] {
+          "NONE",
+          "PLAYING",
+          "STOPPED",
+        };
+
+        if(ImGui::Combo("Current State##Audio", (int*)&audio.current_state, state, sizeof(state) / sizeof(char*)))
+        {
+          update_audio = true;
+        }
+        
+        if(update_audio)
+        {
+          Nil::Data::set(self->inspector_node, audio);
+        }
+      }
+    }
+
+
+    /*
+      Audio Resource
+    */
+    if(Nil::Data::has_audio_resource(self->inspector_node))
+    {
+      if(ImGui::CollapsingHeader("Audio Resource"))
+      {
+        ImGui::Text("No UI Impl");
       }
     }
 
@@ -1037,25 +1091,27 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
 
     ImGui::Text("Add Other Data");
 
-    const size_t item_count = 16;
+    const size_t item_count = 18;
 
     const char *items[item_count] {
       "Select Data",
-      "Camera",     // 1
-      "Collider",   // 2
-      "Developer",  // 3
-      "Gamepad",    // 4
-      "Graphics",   // 5
-      "Keyboard",   // 6
-      "Light",      // 7
-      "Logic",      // 8
-      "Material",   // 9
-      "Mesh",       // 10
-      "Mouse",      // 11
-      "Resource",   // 12
-      "Rigidbody",  // 13
-      "Texture",    // 14
-      "Window",     // 15
+      "Audio",          // 1
+      "AudioResource",  // 2
+      "Camera",         // 3
+      "Collider",       // 4
+      "Developer",      // 5
+      "Gamepad",        // 6
+      "Graphics",       // 7
+      "Keyboard",       // 8
+      "Light",          // 9
+      "Logic",          // 10
+      "Material",       // 11
+      "Mesh",           // 12
+      "Mouse",          // 13
+      "Resource",       // 14
+      "Rigidbody",      // 15
+      "Texture",        // 16
+      "Window",         // 17
     };
 
     int item = 0;
@@ -1065,6 +1121,24 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
       {
         case(1):
         {
+          if(!Nil::Data::has_audio(self->inspector_node))
+          {
+            Nil::Data::Audio data{};
+            Nil::Data::set(self->inspector_node, data);
+          }
+          break;
+        }
+        case(2):
+        {
+          if(!Nil::Data::has_audio_resource(self->inspector_node))
+          {
+            Nil::Data::Audio_resource data{};
+            Nil::Data::set(self->inspector_node, data);
+          }
+          break;
+        }
+        case(3):
+        {
           if(!Nil::Data::has_camera(self->inspector_node))
           {
             Nil::Data::Camera data{};
@@ -1072,7 +1146,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(2):
+        case(4):
         {
           if(!Nil::Data::has_collider(self->inspector_node))
           {
@@ -1081,7 +1155,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(3):
+        case(5):
         {
           if(!Nil::Data::has_developer(self->inspector_node))
           {
@@ -1090,7 +1164,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(4):
+        case(6):
         {
           if(!Nil::Data::has_gamepad(self->inspector_node))
           {
@@ -1099,7 +1173,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(5):
+        case(7):
         {
           if(!Nil::Data::has_graphics(self->inspector_node))
           {
@@ -1108,7 +1182,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(6):
+        case(8):
         {
           if(!Nil::Data::has_keyboard(self->inspector_node))
           {
@@ -1117,7 +1191,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(7):
+        case(9):
         {
           if(!Nil::Data::has_light(self->inspector_node))
           {
@@ -1126,7 +1200,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(8):
+        case(10):
         {
           if(!Nil::Data::has_logic(self->inspector_node))
           {
@@ -1135,7 +1209,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(9):
+        case(11):
         {
           if(!Nil::Data::has_material(self->inspector_node))
           {
@@ -1144,7 +1218,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(10):
+        case(12):
         {
           if(!Nil::Data::has_mesh(self->inspector_node))
           {
@@ -1153,7 +1227,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(11):
+        case(13):
         {
           if(!Nil::Data::has_mouse(self->inspector_node))
           {
@@ -1162,7 +1236,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(12):
+        case(14):
         {
           if(!Nil::Data::has_resource(self->inspector_node))
           {
@@ -1171,7 +1245,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(13):
+        case(15):
         {
           if(!Nil::Data::has_rigidbody(self->inspector_node))
           {
@@ -1180,7 +1254,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(14):
+        case(16):
         {
           if(!Nil::Data::has_texture(self->inspector_node))
           {
@@ -1189,7 +1263,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           }
           break;
         }
-        case(15):
+        case(17):
         {
           if(!Nil::Data::has_window(self->inspector_node))
           {

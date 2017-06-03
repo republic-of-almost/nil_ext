@@ -8,6 +8,7 @@
 #include <nil/nil.hpp>
 
 #include <aspect/sdl_aspect.hpp>
+#include <aspect/sdl_mixer_aspect.hpp>
 
 #ifndef NIMGUI_ASPECT
 #include <aspect/imgui_aspect.hpp>
@@ -41,6 +42,22 @@ load_aspects(Nil::Engine &nil_engine)
     sdl_aspect.user_data      = (uintptr_t)&sdl;
 
     nil_engine.add_aspect(sdl_aspect);
+  }
+
+  /*
+    SDL Mixer Aspect
+    --
+    Handles audio
+  */
+  static Nil_ext::SDLMixer_Aspect::Data sdl_mixer;
+  {
+    Nil::Aspect sdl_mixer_aspect{};
+    sdl_mixer_aspect.start_up_fn   = Nil_ext::SDLMixer_Aspect::start_up;
+    sdl_mixer_aspect.events_fn     = Nil_ext::SDLMixer_Aspect::events;
+    sdl_mixer_aspect.late_think_fn = Nil_ext::SDLMixer_Aspect::late_think;
+    sdl_mixer_aspect.user_data     = (uintptr_t)&sdl_mixer;
+    
+    nil_engine.add_aspect(sdl_mixer_aspect);
   }
 
   /*

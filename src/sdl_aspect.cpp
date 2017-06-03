@@ -312,7 +312,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         #endif
 
         #ifdef __EMSCRIPTEN__
-        const Uint32 init_flags = SDL_INIT_VIDEO;
+        const Uint32 init_flags = SDL_INIT_VIDEO | SDL_INIT_AUDIO;
         #else
         const Uint32 init_flags = SDL_INIT_EVERYTHING;
         #endif

@@ -7,7 +7,7 @@
 table.insert(
   projects,
   {
-    name     = "Aspects",
+    name     = "AspectsControllers",
     kind     = "StaticLib",
     language = "C++",
     location = make.get_proj_root(),

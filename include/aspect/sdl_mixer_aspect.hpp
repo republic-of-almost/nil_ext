@@ -5,6 +5,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <utilities/array.hpp>
 #include <nil/node_controller.hpp>
+#include <vector>
 
 
 namespace Nil_ext {
@@ -16,8 +17,9 @@ namespace SDLMixer_Aspect {
 
 struct Data
 {
+  lib::array<uint32_t> sample_keys;
   lib::array<Mix_Chunk*, 64>  samples;
-  lib::array<uint32_t, 64>    channels;
+  lib::array<uint32_t>    channels;
   
   Nil::Node_controller sample_nodes;
   Nil::Node_controller sample_player_nodes;

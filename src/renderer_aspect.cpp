@@ -18,7 +18,6 @@
 #endif
 
 #ifdef IMGUI_DEVELOPER_SUPPORT
-
 #include <imgui/imgui.h>
 
 
@@ -390,7 +389,7 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
 
     /*
       Rebuild the cameras based on the viewport.
-      This is alittle hack atm.
+      TODO: This is a hack fix.
     */
     for(uint32_t i = 0; i < self->camera_node_ids.size(); ++i)
     {
