@@ -118,6 +118,7 @@ events(
 //      // Debugging
       Mix_Chunk *sample = Mix_LoadWAV("/Users/PhilCK/Desktop/Lua/audio/walk.wav");
       self->samples.emplace_back(sample);
+      self->sample_keys.emplace_back(uint32_t{0});
     }
     
     
@@ -137,23 +138,29 @@ late_think(
   /*
     Load any samples
   */
-  for(auto &samp : self->sample_nodes.updated_and_added())
+  for(auto &samp : self->sample_nodes.added())
   {
-    Nil::Node node = Nil::Node(samp.get_id());
-    Nil::Data::Audio_resource data{};
+    {
+      Nil::Node node = Nil::Node(samp.get_id());
     
-    Nil::Data::get(node, data);
-  
-    self->samples.emplace_back(
-      Mix_LoadWAV(data.filename)
-    );
+      Nil::Data::Audio_resource data{};
+      
+      Nil::Data::get(node, data);
     
-    self->sample_keys.emplace_back(
-      samp.get_id()
-    );
+      Mix_Chunk *chunk = Mix_LoadWAV(data.filename);
+      
+      if(!chunk)
+      {
+        LOG_ERROR("Failed to load audio file");
+        break;
+      }
     
-    data.id = samp.get_id();
-    Nil::Data::set(node, data);
+      self->samples.emplace_back(chunk);
+      self->sample_keys.emplace_back(samp.get_id());
+      
+      data.id = samp.get_id();
+      Nil::Data::set(node, data);
+    }
   }
   
   /*

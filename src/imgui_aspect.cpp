@@ -693,6 +693,11 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           update_audio = true;
         }
         
+        if(ImGui::SliderFloat("Volume##Audio", &audio.volume, 0.f, 1.f))
+        {
+          update_audio = true;
+        }
+        
         if(update_audio)
         {
           Nil::Data::set(self->inspector_node, audio);
