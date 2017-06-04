@@ -345,7 +345,6 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
       Nil::Data::Material mat{};
       Nil::Data::get(node, mat);
 
-
       Nil::Data::Mesh mesh{};
 
       if(Nil::Data::has_mesh(node))
@@ -384,37 +383,6 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         self->renderable_node_ids.emplace_back(node.get_id());
         self->renderables.emplace_back(rov_render);
       }
-    }
-
-
-    /*
-      Rebuild the cameras based on the viewport.
-      TODO: This is a hack fix.
-    */
-    for(uint32_t i = 0; i < self->camera_node_ids.size(); ++i)
-    {
-      Nil::Node node(self->camera_node_ids[i]);
-      LIB_ASSERT(node.is_valid());
-
-      Nil::Data::Transform trans{};
-      Nil::Data::get(node, trans, true);
-
-      Nil::Data::Camera cam_data{};
-      Nil::Data::get(node, cam_data);
-
-      uint32_t clear_flags = 0;
-
-      if(cam_data.clear_color_buffer) { clear_flags |= rovClearFlag_Color; }
-      if(cam_data.clear_depth_buffer) { clear_flags |= rovClearFlag_Depth; }
-
-      const Data::ROV_Camera rov_camera
-      {
-        math::mat4_lookat_from_nil_transform(trans),
-        math::mat4_projection_from_nil_camera(cam_data, self->current_viewport),
-        clear_flags
-      };
-
-      self->rov_camera[i] = rov_camera;
     }
 
     {
@@ -461,8 +429,6 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
         }
       }
 
-//        self->pending_renderable_node_updates.clear();
-//        self->pending_camera_node_updates.clear();
     } // Update or insert data
   }
 
