@@ -31,14 +31,14 @@ namespace SDL_Aspect {
 
 struct Data
 {
-  // Window GL State
+  // Window / GL State //
 
   SDL_Window *sdl_window;
   SDL_GLContext sdl_gl_context;
   
   Nil::Node window_node;
   
-  // Input State
+  // Input State //
   
   int32_t mouse_delta[2];
   int32_t mouse[2];
@@ -50,7 +50,7 @@ struct Data
   
   uint32_t keys[Nil::Data::KeyCode::COUNT];
   
-  // Debug UI
+  // Debug UI //
   
   #ifdef IMGUI_DEVELOPER_SUPPORT
   bool sdl_show_info;

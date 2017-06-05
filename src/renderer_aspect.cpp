@@ -27,7 +27,7 @@
 namespace {
 
 
-#ifndef NIMGUI_ASPECT
+#ifndef NIMGUI
 inline void
 renderer_aspect_debug_menu(uintptr_t user_data)
 {
@@ -210,7 +210,7 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Developer{});
 
 
-  #ifndef NIMGUI_ASPECT
+  #ifndef NIMGUI
   self->renderer_show_info     = false;
   self->renderer_show_settings = false;
 

@@ -2,9 +2,15 @@
 #define SDL_MIXER_ASPECT_INCLUDED_DB71B449_E4F1_458B_975D_C36A318BBAAE
 
 
+#ifndef __EMSCRIPTEN__
 #include <SDL2/SDL_mixer.h>
+#else
+#include <SDL/SDL_mixer.h>
+#endif
+
 #include <utilities/array.hpp>
 #include <nil/node_controller.hpp>
+#include <nil/node.hpp>
 #include <vector>
 
 
@@ -25,6 +31,14 @@ struct Data
   Nil::Node_controller sample_player_nodes;
   
   bool initialized = false;
+  
+  // Debug UI //
+  
+  #ifndef NIMGUI
+  Nil::Node dev_menu_node;
+  
+  bool sdl_show_info = false;
+  #endif
 };
 
 

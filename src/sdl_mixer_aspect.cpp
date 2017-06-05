@@ -8,6 +8,14 @@
 #include <utilities/array.hpp>
 #include <utilities/entity.hpp>
 
+#ifndef NIMGUI
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_sdl_gl3.h>
+#include <imguizmo/ImGuizmo.h>
+#endif
+
+#include <stdint.h>
+
 
 namespace {
 
@@ -31,7 +39,67 @@ finished_chans(int channel)
 } // ns
 
 
-// ------------------------------------------------------ [ SDL Aspect Impl ] --
+// ----------------------------------------------- [ SDL Mixer Aspect IMGUI ] --
+
+
+#ifndef NIMGUI
+
+
+namespace {
+
+
+inline void
+sdl_mixer_aspect_debug_menu(uintptr_t user_data)
+{
+  Nil_ext::SDLMixer_Aspect::Data *self = reinterpret_cast<Nil_ext::SDLMixer_Aspect::Data*>(user_data);
+  LIB_ASSERT(self);
+
+  if(ImGui::BeginMenu("SDL_MIX"))
+  {
+    ImGui::MenuItem("Info", nullptr, &self->sdl_show_info);
+  
+    ImGui::EndMenu();
+  }
+}
+
+
+inline void
+sdl_aspect_debug_window(uintptr_t user_data)
+{
+  Nil_ext::SDLMixer_Aspect::Data *self = reinterpret_cast<Nil_ext::SDLMixer_Aspect::Data*>(user_data);
+  LIB_ASSERT(self);
+
+  if(self->sdl_show_info)
+  {
+    ImGui::Begin("Mixer Info", &self->sdl_show_info);
+    
+    if(ImGui::CollapsingHeader("Active Channels"))
+    {
+      const size_t count = self->channels.size();
+      
+      for(uint32_t i = 0; i < count; ++i)
+      {
+        const uint32_t entity = self->channels[i];
+        
+        if(entity)
+        {
+          ImGui::Text("Channel %i\n", i);
+        }
+      }
+    }
+    
+    ImGui::End();
+  }
+}
+
+
+} // ns
+
+
+#endif
+
+
+// ------------------------------------------------ [ SDL Mixer Aspect Impl ] --
 
 
 namespace Nil_ext {
@@ -66,6 +134,20 @@ start_up(
     Nil::Node_controller samples(Nil::Data::get_type_id(Nil::Data::Audio_resource{}));
     self->sample_nodes = static_cast<Nil::Node_controller&&>(samples);
   }
+  
+  #ifndef NIMGUI
+  {
+    Nil::Data::Developer dev{};
+    dev.type_id = 1;
+    dev.aux_01 = (uintptr_t)sdl_mixer_aspect_debug_menu;
+    dev.aux_02 = (uintptr_t)self;
+
+    dev.aux_03 = (uintptr_t)sdl_aspect_debug_window;
+    dev.aux_04 = (uintptr_t)self;
+
+    Nil::Data::set(self->dev_menu_node, dev);
+  }
+  #endif
 }
 
 
@@ -175,6 +257,7 @@ late_think(
     Nil::Data::Audio data{};
     Nil::Data::get(node, data);
     
+    data.channel_id = 0;
     data.current_state = Nil::Data::Audio::STOPPED;
     Nil::Data::set(node, data);
   }
@@ -237,8 +320,12 @@ late_think(
             
             // -- Play Channel -- //
             {
+              const int loop = audio.loop ? -1 : 0;
+            
               Mix_Chunk *chunk = self->samples[sample];
-              Mix_PlayChannel(i, chunk, 0);
+              Mix_PlayChannel(i, chunk, loop);
+              
+              audio.channel_id = i + 1;
             }
             
             // Set the channel data.
@@ -251,6 +338,11 @@ late_think(
         
         audio.request_state = Nil::Data::Audio::NO_REQ_STATE;
         Nil::Data::set(node, audio);
+      }
+      else if(audio.channel_id)
+      {
+        const float volume = (float)MIX_MAX_VOLUME * audio.volume;
+        Mix_Volume(audio.channel_id - 1, volume);
       }
     }
   }

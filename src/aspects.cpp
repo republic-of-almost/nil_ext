@@ -10,7 +10,7 @@
 #include <aspect/sdl_aspect.hpp>
 #include <aspect/sdl_mixer_aspect.hpp>
 
-#ifndef NIMGUI_ASPECT
+#ifndef NIMGUI
 #include <aspect/imgui_aspect.hpp>
 #endif
 
@@ -99,7 +99,7 @@ load_aspects(Nil::Engine &nil_engine)
     --
     Debugging UI
   */
-  #ifndef NIMGUI_ASPECT
+  #ifndef NIMGUI
   static Nil_ext::ImGui_Aspect::Data imgui;
   {
     Nil::Aspect imgui_aspect{};

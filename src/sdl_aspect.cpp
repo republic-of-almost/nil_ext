@@ -13,7 +13,7 @@
 #include <GL/gl3w.h>
 #endif
 
-#ifndef NIMGUI_ASPECT
+#ifndef NIMGUI
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_sdl_gl3.h>
 #include <imguizmo/ImGuizmo.h>
@@ -125,11 +125,14 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
 
 #ifdef IMGUI_DEVELOPER_SUPPORT
 
+
 // ----------------------------------------------------- [ SDL Aspect IMGUI ] --
+
 
 namespace {
 
-#ifndef NIMGUI_ASPECT
+
+#ifndef NIMGUI
 inline void
 sdl_aspect_debug_menu(uintptr_t user_data)
 {
@@ -425,13 +428,13 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
 
       Nil::Data::set(self->window_node, gfx);
 
-      #ifndef NIMGUI_ASPECT
+      #ifndef NIMGUI
       ImGui_ImplSdlGL3_Init(window);
       ImGui_ImplSdlGL3_NewFrame(window);
       ImGuizmo::BeginFrame();
       #endif
 
-      #ifndef NIMGUI_ASPECT
+      #ifndef NIMGUI
       Nil::Data::Developer dev{};
       dev.type_id = 1;
       dev.aux_01 = (uintptr_t)sdl_aspect_debug_menu;
@@ -611,12 +614,12 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
     }
     
         // Flip Buffers
-    #ifndef NIMGUI_ASPECT
+    #ifndef NIMGUI
     ImGui::Render();
     #endif
     
     // -- Reset ImGui -- //
-    #ifndef NIMGUI_ASPECT
+    #ifndef NIMGUI
     ImGui_ImplSdlGL3_NewFrame(self->sdl_window);
     ImGuizmo::BeginFrame();
     #endif
@@ -625,7 +628,7 @@ late_think(Nil::Engine &engine, Nil::Aspect &aspect)
     
     while (SDL_PollEvent(&evt))
     {
-      #ifndef NIMGUI_ASPECT
+      #ifndef NIMGUI
       if(ImGui_ImplSdlGL3_ProcessEvent(&evt))
       {
         // Need to figure out how to selectivly swallow events.

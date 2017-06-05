@@ -14,7 +14,7 @@
 namespace {
 
 
-#ifndef NIMGUI_ASPECT
+#ifndef NIMGUI
 inline void
 logic_aspect_debug_menu(uintptr_t user_data)
 {

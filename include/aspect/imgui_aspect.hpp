@@ -1,4 +1,4 @@
-#ifndef NIMGUI_ASPECT
+#ifndef NIMGUI
 /*
   SDL_Asepct create a window.
   and OpenGL context.

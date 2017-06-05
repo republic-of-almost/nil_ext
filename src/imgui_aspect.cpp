@@ -1,4 +1,4 @@
-#ifndef NIMGUI_ASPECT
+#ifndef NIMGUI
 
 #include <aspect/imgui_aspect.hpp>
 #include <nil/aspect.hpp>
@@ -669,7 +669,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
         Nil::Data::get(self->inspector_node, audio);
         
         bool update_audio = false;
-        if(ImGui::InputInt("ID##Audio", (int*)&audio.audio_id)) { update_audio = true; }
+        if(ImGui::InputInt("ID##AudioPlayer", (int*)&audio.audio_id)) { update_audio = true; }
         
         const char *request[] {
           "NONE",
@@ -677,7 +677,7 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           "STOP",
         };
         
-        if(ImGui::Combo("Request##Audio", (int*)&audio.request_state, request, sizeof(request) / sizeof(char*)))
+        if(ImGui::Combo("Request##AudioPlayer", (int*)&audio.request_state, request, sizeof(request) / sizeof(char*)))
         {
           update_audio = true;
         }
@@ -688,16 +688,15 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
           "STOPPED",
         };
 
-        if(ImGui::Combo("Current State##Audio", (int*)&audio.current_state, state, sizeof(state) / sizeof(char*)))
+        if(ImGui::Combo("Current State##AudioPlayer", (int*)&audio.current_state, state, sizeof(state) / sizeof(char*)))
         {
           update_audio = true;
         }
         
-        if(ImGui::SliderFloat("Volume##Audio", &audio.volume, 0.f, 1.f))
-        {
-          update_audio = true;
-        }
+        if(ImGui::SliderFloat("Volume##AudioPlayer", &audio.volume, 0.f, 1.f)) { update_audio = true; }
+        if(ImGui::Checkbox("Looping##AudioPlayer", &audio.loop))               { update_audio = true; }
         
+        // Update the Data //
         if(update_audio)
         {
           Nil::Data::set(self->inspector_node, audio);
@@ -1365,8 +1364,11 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
   for(auto &menu : self->dev_data)
   {
     using fn = void(*)(uintptr_t user_data);
-
-    ((fn)menu.aux_03)(menu.aux_04);
+    
+    if(menu.aux_03)
+    {
+      ((fn)menu.aux_03)(menu.aux_04);
+    }
   }
 
 }
