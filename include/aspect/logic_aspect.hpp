@@ -4,28 +4,16 @@
 
 #include <nil/fwd.hpp>
 #include <nil/node.hpp>
+#include <nil/data/logic.hpp>
 #include <math/fwd.hpp>
 #include <vector>
 
 
 namespace Nil_ext {
-
-class Logic
-{
-public:
-
-  explicit Logic() {}
-  virtual ~Logic() {}
-
-  virtual void on_start()                     {}
-  virtual void on_early_think(const float dt) {}
-  virtual void on_think(const float dt)       {}
-  virtual void on_late_think(const float dt)  {}
-  virtual void on_end()                       {}
-};
-
-
 namespace Logic_aspect {
+
+
+
 
 
 // ---------------------------------------------------- [ Logic Aspect Data ] --
@@ -36,7 +24,8 @@ struct Data
   std::vector<Nil::Node> pending_removals;
   std::vector<Nil::Node> logic_nodes;
 
-  std::vector<Logic*> logic;
+  std::vector<Nil::generic_callback_fn> update;
+  std::vector<uintptr_t> user_data;
 
   #ifdef IMGUI_DEVELOPER_SUPPORT
   Nil::Node dev_node;

@@ -830,10 +830,10 @@ think(Nil::Engine &engine, Nil::Aspect &aspect)
 
         bool update_logic = false;
 
-        if(ImGui::InputInt("Type",  (int*)&logic.type))       { update_logic = true; }
-        if(ImGui::InputInt("ID",    (int*)&logic.logic_id))   { update_logic = true; }
-        if(ImGui::InputInt("Major", (int*)&logic.aux_01))     { update_logic = true; }
-        if(ImGui::InputInt("Minor", (int*)&logic.aux_02))     { update_logic = true; }
+//        if(ImGui::InputInt("Type",  (int*)&logic.type))       { update_logic = true; }
+//        if(ImGui::InputInt("ID",    (int*)&logic.logic_id))   { update_logic = true; }
+//        if(ImGui::InputInt("Major", (int*)&logic.aux_01))     { update_logic = true; }
+//        if(ImGui::InputInt("Minor", (int*)&logic.aux_02))     { update_logic = true; }
 
         if(update_logic)
         {

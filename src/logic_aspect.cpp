@@ -62,19 +62,19 @@ start_up(Nil::Engine &engine, Nil::Aspect &aspect)
   aspect.data_types = 0;
   aspect.data_types |= Nil::Data::get_type_id(Nil::Data::Logic{});
 
-  #ifdef IMGUI_DEVELOPER_SUPPORT
-  self->dev_node.set_name("Logic Dev");
-
-  Nil::Data::Developer dev{};
-  dev.type_id = 1;
-  dev.aux_01 = (uintptr_t)logic_aspect_debug_menu;
-  dev.aux_02 = (uintptr_t)self;
-
-  dev.aux_03 = (uintptr_t)logic_aspect_debug_window;
-  dev.aux_04 = (uintptr_t)self;
-
-  Nil::Data::set(self->dev_node, dev);
-  #endif
+//  #ifdef IMGUI_DEVELOPER_SUPPORT
+//  self->dev_node.set_name("Logic Dev");
+//
+//  Nil::Data::Developer dev{};
+//  dev.type_id = 1;
+//  dev.aux_01 = (uintptr_t)logic_aspect_debug_menu;
+//  dev.aux_02 = (uintptr_t)self;
+//
+//  dev.aux_03 = (uintptr_t)logic_aspect_debug_window;
+//  dev.aux_04 = (uintptr_t)self;
+//
+//  Nil::Data::set(self->dev_node, dev);
+//  #endif
 }
 
 
@@ -115,8 +115,10 @@ events(Nil::Engine &engine, Nil::Aspect &aspect, Nil::Event_list &event_list)
           if(!exists)
           {
             self->logic_nodes.emplace_back(node);
-            self->logic.emplace_back((Logic*)data.aux_01);
-            self->logic.back()->on_start();
+            self->update.emplace_back(data.think_01);
+            self->user_data.emplace_back(data.user_data);
+//            self->logic.emplace_back((Logic*)data.aux_01);
+//            self->logic.back()->on_start();
           }
         }
       }
@@ -139,9 +141,9 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
   Data *self = reinterpret_cast<Data*>(aspect.user_data);
   LIB_ASSERT(self);
 
-  for(auto &log : self->logic)
+  for(size_t i = 0; i < self->logic_nodes.size(); ++i)
   {
-    log->on_early_think(0.16f);
+    self->update[i](self->logic_nodes[i], self->user_data[i]);
   }
 }
 
@@ -152,13 +154,13 @@ early_think(Nil::Engine &engine, Nil::Aspect &aspect)
 void
 think(Nil::Engine &engine, Nil::Aspect &aspect)
 {
-  Data *self = reinterpret_cast<Data*>(aspect.user_data);
-  LIB_ASSERT(self);
-
-  for(auto &log : self->logic)
-  {
-    log->on_think(0.16f);
-  }
+//  Data *self = reinterpret_cast<Data*>(aspect.user_data);
+//  LIB_ASSERT(self);
+//
+//  for(auto &log : self->logic)
+//  {
+//    log->on_think(0.16f);
+//  }
 }
 
 
