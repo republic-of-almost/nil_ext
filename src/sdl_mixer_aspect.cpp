@@ -3,10 +3,10 @@
 #include <nil/data/data.hpp>
 #include <nil/node_event.hpp>
 #include <nil/node.hpp>
-#include <utilities/key.hpp>
-#include <utilities/utilities.hpp>
-#include <utilities/array.hpp>
-#include <utilities/entity.hpp>
+#include <lib/key.hpp>
+#include <lib/utilities.hpp>
+#include <lib/array.hpp>
+#include <lib/entity.hpp>
 
 #ifndef NIMGUI
 #include <imgui/imgui.h>

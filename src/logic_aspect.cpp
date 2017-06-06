@@ -1,5 +1,5 @@
 #include <aspect/logic_aspect.hpp>
-#include <utilities/utilities.hpp>
+#include <lib/utilities.hpp>
 #include <nil/aspect.hpp>
 #include <nil/data/data.hpp>
 #include <nil/node_event.hpp>

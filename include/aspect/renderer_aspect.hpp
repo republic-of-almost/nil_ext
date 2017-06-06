@@ -6,7 +6,7 @@
 #include <nil/node.hpp>
 #include <nil/node_controller.hpp>
 #include <math/math.hpp>
-#include <utilities/utilities.hpp>
+#include <lib/utilities.hpp>
 #include <vector>
 
 

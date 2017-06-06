@@ -3,7 +3,7 @@
 #include <nil/node_event.hpp>
 #include <nil/data/data.hpp>
 #include <nil/aspect.hpp>
-#include <utilities/utilities.hpp>
+#include <lib/utilities.hpp>
 #include <math/math.hpp>
 #include <stddef.h>
 

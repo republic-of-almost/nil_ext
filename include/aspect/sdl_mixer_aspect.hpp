@@ -8,7 +8,7 @@
 #include <SDL/SDL_mixer.h>
 #endif
 
-#include <utilities/array.hpp>
+#include <lib/array.hpp>
 #include <nil/node_controller.hpp>
 #include <nil/node.hpp>
 #include <vector>

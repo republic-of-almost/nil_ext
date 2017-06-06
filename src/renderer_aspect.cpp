@@ -11,7 +11,7 @@
 #include <nil/data/data.hpp>
 #include <nil/data/window.hpp>
 #include <aspect/math_nil_extensions.hpp>
-#include <utilities/utilities.hpp>
+#include <lib/utilities.hpp>
 
 #ifdef IMGIZMO_DEVELOPER_SUPPORT
 #include <imguizmo/ImGuizmo.h>
